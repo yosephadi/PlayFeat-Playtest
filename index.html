@@ -261,12 +261,9 @@ const quad = (u0, u1, y0, y1) => [P(u0, y0), P(u1, y0), P(u1, y1), P(u0, y1)];
 function ellipseAt(u, y, r) { const rx = r * sAt(y); return { x: VP.x + u * sAt(y), y, rx, ry: rx * (y - VP.y) / FOCAL }; }
 const toVP = (x, y, k) => ({ x: VP.x + (x - VP.x) * k, y: VP.y + (y - VP.y) * k });
 
-function makeBoxes() {
-  const x0 = P(225, 705).x, x1 = P(330, 705).x, hb = 64;
-  // index 0 = top box, 1 = bottom box
-  return [{ x0, x1, yTop: 705 - 2 * hb, yBot: 705 - hb }, { x0, x1, yTop: 705 - hb, yBot: 705 }];
-}
-const BOXES = makeBoxes();
+// Storage = a steel prep rail along the right edge of the counter with two inserts (back, front)
+const RAIL = quad(236, FAR_HALF, FAR_Y, H);
+const INSERTS = [quad(244, 322, 580, 628), quad(244, 322, 640, 704)];
 
 const L = {
   counterY: FAR_Y,
@@ -275,10 +272,10 @@ const L = {
   grillPoly: quad(-78, 78, 598, 738),
   grillInner: quad(-58, 68, 612, 724),
   grillC: P(5, 668),
-  plates: [ellipseAt(-178, 672, 50)],
-  bowl: ellipseAt(178, 672, 50),
-  boxes: BOXES,
-  storage: BOXES.map((b, i) => ({ x: toVP(b.x0, b.yTop, 0.86).x - 6, y: i === 0 ? toVP(b.x0, b.yTop, 0.86).y : b.yTop, w: W, h: b.yBot - (i === 0 ? toVP(b.x0, b.yTop, 0.86).y : b.yTop) + (i === 1 ? 12 : 0) })),
+  plates: [ellipseAt(-172, 672, 50)],
+  bowl: ellipseAt(165, 672, 50),
+  rail: RAIL,
+  storage: INSERTS,
   slots: [{ x: 600, y: 64, w: 314, h: 154 }, { x: 600, y: 220, w: 314, h: 154 }, { x: 600, y: 376, w: 314, h: 154 }],
   lanes: (CFG.layout && CFG.layout.laneX) || [280, 410, 540, 700],
   bubbleR: 46,
@@ -642,7 +639,7 @@ function grillSlotPos(i) {
   return P(-50 + 100 * i / (n - 1), L.grillC.y);
 }
 function slotAt(p) { for (let i = 0; i < L.slots.length; i++) if (inRect(p, L.slots[i])) return i; return -1; }
-function boxCenter(i) { const b = L.boxes[i]; return { x: (b.x0 + Math.min(W, b.x1)) / 2, y: (b.yTop + b.yBot) / 2 }; }
+function boxCenter(i) { const q = L.storage[i]; return { x: q.reduce((a, v) => a + Math.min(W - 12, v.x), 0) / q.length, y: q.reduce((a, v) => a + v.y, 0) / q.length }; }
 
 // Plate and bowl accept any single ingredient. The second item finishes the dish only when the pair is
 // that vessel's recipe (plate: flatbread dishes, bowl: sorbet) and any flatbread is baked; otherwise refused.
@@ -688,7 +685,7 @@ function pickupAt(p) {
       if (gi >= 0) { const it = S.grill[gi]; S.grill[gi] = null; return { item: it, fromBubble: false }; }
     }
     for (const v of vessels()) if (v.get() && inEll(p, v.e)) { const it = v.get(); v.set(null); return { item: it, fromBubble: false }; }
-    for (let i = 0; i < S.storage.length && i < L.storage.length; i++) if (S.storage[i] && inRect(p, L.storage[i], 4)) { const it = S.storage[i]; S.storage[i] = null; return { item: it, fromBubble: false }; }
+    for (let i = 0; i < S.storage.length && i < L.storage.length; i++) if (S.storage[i] && inPoly(p, L.storage[i], 12)) { const it = S.storage[i]; S.storage[i] = null; return { item: it, fromBubble: false }; }
     return null;
   };
   return p.y > L.counterY - 10 ? (tryStations() || tryBubbles()) : (tryBubbles() || tryStations());
@@ -728,7 +725,7 @@ function drop(p) {
   }
   // storage
   for (let i = 0; i < S.storage.length && i < L.storage.length; i++) {
-    if (!inRect(p, L.storage[i], 6)) continue;
+    if (!inPoly(p, L.storage[i], 14)) continue;
     if (it.t === 'flatbread' && it.st === 'burnt') break;
     const target = S.storage[i] ? S.storage.findIndex(x => !x) : i;
     if (target >= 0) { S.storage[target] = it; log('item_stored', { item: describe(it), slot: target + 1 }); return; }
@@ -936,24 +933,20 @@ function drawVessels(st) {
 }
 
 function drawStorage(st) {
-  for (let i = L.boxes.length - 1; i >= 0; i--) {
-    const bx = L.boxes[i], x1 = bx.x1;
-    const bTop = toVP(bx.x0, bx.yTop, 0.86), bBot = toVP(bx.x0, bx.yBot, 0.86), bTopR = toVP(x1, bx.yTop, 0.86);
-    ctx.fillStyle = '#2f52c4'; poly([{ x: bx.x0, y: bx.yTop }, bTop, bBot, { x: bx.x0, y: bx.yBot }]); ctx.fill();
-    if (i === 0) {
-      ctx.fillStyle = '#5b86f5'; poly([{ x: bx.x0, y: bx.yTop }, { x: x1, y: bx.yTop }, bTopR, bTop]); ctx.fill();
-      const inset = (a, b2, t) => ({ x: a.x + (b2.x - a.x) * t, y: a.y + (b2.y - a.y) * t });
-      const f0 = { x: bx.x0, y: bx.yTop }, f1 = { x: x1, y: bx.yTop };
-      ctx.fillStyle = '#231d66'; poly([inset(f0, bTopR, 0.12), inset(f1, bTop, 0.12), inset(bTopR, f0, 0.12), inset(bTop, f1, 0.12)]); ctx.fill();
-    }
-    ctx.fillStyle = '#4c78ee'; ctx.fillRect(bx.x0, bx.yTop, x1 - bx.x0, bx.yBot - bx.yTop);
-    ctx.strokeStyle = 'rgba(30,40,140,0.5)'; ctx.lineWidth = 2; ctx.strokeRect(bx.x0, bx.yTop, x1 - bx.x0, bx.yBot - bx.yTop);
-    ctx.save(); ctx.beginPath(); ctx.rect(bx.x0, bx.yTop, x1 - bx.x0, bx.yBot - bx.yTop); ctx.clip();
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 3;
-    for (let x = bx.x0 - 80; x < x1; x += 22) { ctx.beginPath(); ctx.moveTo(x, bx.yBot); ctx.lineTo(x + 60, bx.yTop); ctx.stroke(); }
-    ctx.restore();
-  }
-  st.storage.forEach((it, i) => { if (it && L.boxes[i]) { const c = boxCenter(i); drawItem(it, c.x, c.y, 0.82); } });
+  // steel prep rail (mirrors the trash strip on the left)
+  ctx.fillStyle = '#d3d7e0'; poly(L.rail); ctx.fill();
+  ctx.strokeStyle = '#9aa0ad'; ctx.lineWidth = 3; ctx.stroke();
+  L.storage.forEach((q, i) => {
+    const rim = q.map(v => ({ x: v.x, y: v.y }));
+    ctx.fillStyle = '#8f95a6'; poly(rim); ctx.fill();
+    const c = boxCenter(i), inner = q.map(v => ({ x: c.x + (v.x - c.x) * 0.84, y: c.y + (v.y - c.y) * 0.8 }));
+    const g = ctx.createLinearGradient(0, inner[0].y, 0, inner[2].y);
+    g.addColorStop(0, '#2b2f40'); g.addColorStop(1, '#474c63');
+    ctx.fillStyle = g; poly(inner); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(rim[3].x, rim[3].y); ctx.lineTo(rim[2].x, rim[2].y); ctx.stroke();
+  });
+  st.storage.forEach((it, i) => { if (it && L.storage[i]) { const c = boxCenter(i); drawItem(it, c.x, c.y - 4, 0.8); } });
 }
 
 function drawAlien(x, y, angry) {
@@ -1051,7 +1044,7 @@ function drawHUD() {
   if (S.outside.length) { pill(800, 150, '#2a1640'); txt('+' + S.outside.length + ' waiting outside', 875, 35, 14, '#fff'); }
 }
 
-const EMPTY_ST = { grill: new Array(C.grillSlots).fill(null), plates: L.plates.map(() => null), bowl: null, storage: L.boxes.map(() => null) };
+const EMPTY_ST = { grill: new Array(C.grillSlots).fill(null), plates: L.plates.map(() => null), bowl: null, storage: L.storage.map(() => null) };
 function render() {
   ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
   ctx.fillStyle = FRAME_COLOR; ctx.fillRect(0, 0, W, H);
@@ -1265,7 +1258,7 @@ window.__pf = {
   grillSlotPos,
   centers() {
     return { trash: L.trashC, grill: grillSlotPos(0), plate: { x: L.plates[0].x, y: L.plates[0].y }, bowl: { x: L.bowl.x, y: L.bowl.y },
-      storage: L.boxes.map((_, i) => boxCenter(i)), slots: L.slots.map((_, i) => slotCenter(i)), pause: { x: L.pauseBtn.x + 24, y: L.pauseBtn.y + 24 } };
+      storage: L.storage.map((_, i) => boxCenter(i)), slots: L.slots.map((_, i) => slotCenter(i)), pause: { x: L.pauseBtn.x + 24, y: L.pauseBtn.y + 24 } };
   },
 };
 </script>
