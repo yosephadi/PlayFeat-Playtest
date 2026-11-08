@@ -642,7 +642,8 @@ function slotAt(p) { for (let i = 0; i < L.slots.length; i++) if (inRect(p, L.sl
 function boxCenter(i) { const q = L.storage[i]; return { x: q.reduce((a, v) => a + Math.min(W - 12, v.x), 0) / q.length, y: q.reduce((a, v) => a + v.y, 0) / q.length }; }
 
 // Plate and bowl accept any single ingredient. The second item finishes the dish only when the pair is
-// that vessel's recipe (plate: flatbread dishes, bowl: sorbet) and any flatbread is baked; otherwise refused.
+// that vessel's recipe (plate: flatbread dishes, bowl: sorbet) and any flatbread is baked; otherwise the
+// new item replaces the old one (see popOff in drop).
 function combine(kind, cur, it) {
   const vesselBase = kind === 'plate' ? 'flatbread' : 'sorbet';
   if (it.t === 'flatbread' && it.st === 'burnt') return null;
@@ -691,6 +692,12 @@ function pickupAt(p) {
   return p.y > L.counterY - 10 ? (tryStations() || tryBubbles()) : (tryBubbles() || tryStations());
 }
 
+// Replace rule: the new item takes the spot; the old one pops off and falls (it can be caught mid-air).
+function popOff(old, it, at, on) {
+  S.falling.push({ item: old, x: at.x, y: at.y - 12, age: 0 });
+  log('item_replaced', { old: describe(old), by: describe(it), on });
+}
+
 function drop(p) {
   const h = S.held; S.held = null;
   const it = h.item;
@@ -709,6 +716,8 @@ function drop(p) {
     let gi = -1, gd = 1e9;
     S.grill.forEach((g, i) => { if (!g) { const d = dist(p, grillSlotPos(i)); if (d < gd) { gd = d; gi = i; } } });
     if (gi >= 0) { S.grill[gi] = it; log('item_placed', { item: describe(it), on: 'grill' }); return; }
+    S.grill.forEach((g, i) => { const d = dist(p, grillSlotPos(i)); if (gi < 0 || d < gd) { gd = d; gi = i; } });
+    const old = S.grill[gi]; S.grill[gi] = it; popOff(old, it, grillSlotPos(gi), 'grill'); return;
   }
   // plate / bowl
   for (const v of vessels()) {
@@ -720,6 +729,7 @@ function drop(p) {
       else log('item_placed', { item: describe(it), on: v.name });
       return;
     }
+    if (cur && combine(v.kind, null, it)) { v.set(it); popOff(cur, it, v.e, v.name); return; }
     log('item_refused', { item: describe(it), on: v.name, holding: describe(cur) });
     break;
   }
@@ -727,9 +737,10 @@ function drop(p) {
   for (let i = 0; i < S.storage.length && i < L.storage.length; i++) {
     if (!inPoly(p, L.storage[i], 14)) continue;
     if (it.t === 'flatbread' && it.st === 'burnt') break;
-    const target = S.storage[i] ? S.storage.findIndex(x => !x) : i;
-    if (target >= 0) { S.storage[target] = it; log('item_stored', { item: describe(it), slot: target + 1 }); return; }
-    break;
+    const old = S.storage[i];
+    S.storage[i] = it; log('item_stored', { item: describe(it), slot: i + 1 });
+    if (old) popOff(old, it, boxCenter(i), 'storage' + (i + 1));
+    return;
   }
   // nothing accepted it: it falls
   S.falling.push({ item: it, x: p.x, y: p.y, age: 0 });
