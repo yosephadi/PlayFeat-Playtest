@@ -188,6 +188,10 @@
   td:first-child { color: #c9b3df; }
   td:last-child { font-weight: 700; font-variant-numeric: tabular-nums; }
   #status { min-height: 22px; }
+  #recent { font-size: 15px; margin-top: 4px; }
+  #recent td { padding: 3px 6px; }
+  #recent td:first-child { color: #c9b3df; }
+  .warn { color: #ffb0b0; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -200,8 +204,10 @@
   <div class="row" id="levelBtns"></div>
   <div class="row"><button id="startBtn" class="big">Start</button></div>
   <div class="row muted" id="runsInfo"></div>
+  <table id="recent"></table>
   <div class="row"><span class="muted">Download all runs:</span>
     <button class="small dlCsv">CSV</button><button class="small dlJson">JSON</button></div>
+  <div class="row warn hidden" id="saveWarn">Runs could not be saved on this device. Download them before closing this page.</div>
 </div></div>
 
 <!-- Pause -->
@@ -217,7 +223,7 @@
   <div class="cols"><table id="sumA"></table><table id="sumB"></table></div>
   <div class="muted" id="sumOrders"></div>
   <div class="row"><textarea id="notes" placeholder="Notes"></textarea></div>
-  <div class="row"><button id="copyRow">Copy this run as one tab-separated row</button></div>
+  <div class="row"><button id="copyRow">Copy this run as one tab-separated row</button><button id="copyHead" class="small">Copy column headers</button></div>
   <div class="row"><span class="muted">Download all runs:</span>
     <button class="dlCsv">CSV</button><button class="dlJson">JSON</button></div>
   <div class="row muted" id="status"></div>
@@ -981,7 +987,13 @@ const $ = id => document.getElementById(id);
 const LS_KEY = 'playfeat_runs_v1';
 let RUNS = [];
 function loadRuns() { try { const s = localStorage.getItem(LS_KEY); const a = s ? JSON.parse(s) : []; RUNS = Array.isArray(a) ? a : []; } catch (e) { RUNS = []; } }
-function saveRuns() { try { localStorage.setItem(LS_KEY, JSON.stringify(RUNS)); } catch (e) { console.warn('localStorage save failed', e); } }
+let saveOk = true;
+function saveRuns() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(RUNS)); saveOk = true; }
+  catch (e) { saveOk = false; console.warn('localStorage save failed', e); }
+  const w = document.getElementById('saveWarn'); if (w) w.classList.toggle('hidden', saveOk);
+  return saveOk;
+}
 loadRuns();
 
 const LEVELS = ['1-1', '1-2', '1-3', '1-4', 'marathon'];
@@ -999,6 +1011,9 @@ function renderLevelBtns() {
 function showPanel() {
   $('summary').classList.add('hidden'); $('pauseOv').classList.add('hidden'); $('panel').classList.remove('hidden');
   $('runsInfo').textContent = RUNS.length + ' run' + (RUNS.length === 1 ? '' : 's') + ' saved on this device';
+  const recent = RUNS.slice(-6).reverse();
+  $('recent').innerHTML = recent.map(r => `<tr><td>${esc(new Date(r.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}</td><td>${esc(r.level)}</td><td>${esc(r.tester || '-')}</td><td>${esc(r.ended)}</td><td>total ${esc(r.total)}</td><td>served ${esc(r.dishesServed)}</td><td>lost ${esc(r.customersLost)}</td></tr>`).join('');
+  $('saveWarn').classList.toggle('hidden', saveOk);
   renderLevelBtns();
 }
 $('startBtn').onclick = () => {
@@ -1011,6 +1026,8 @@ $('startBtn').onclick = () => {
 try { $('tester').value = localStorage.getItem('playfeat_last_tester') || ''; } catch (_) {}
 
 function pauseRun() { if (!S || S.ended) return; S.paused = true; log('paused'); $('pauseOv').classList.remove('hidden'); }
+document.addEventListener('visibilitychange', () => { if (document.hidden && S && !S.ended && !S.paused) { pauseRun(); log('auto_paused_page_hidden'); } });
+window.addEventListener('beforeunload', e => { if (S && !S.ended) { e.preventDefault(); e.returnValue = ''; } });
 $('resumeBtn').onclick = () => { if (!S) return; S.paused = false; log('resumed'); lastNow = performance.now(); $('pauseOv').classList.add('hidden'); };
 $('stopBtn').onclick = () => { if (!S) return; $('pauseOv').classList.add('hidden'); S.paused = false; endRun('stopped'); };
 
@@ -1084,6 +1101,7 @@ $('copyRow').onclick = async () => {
   const ok = await copyText(tsvRow(rec));
   setStatus(ok ? 'Row copied (' + COLS.length + ' columns: ' + COLS.map(c => c[0]).join(', ') + ')' : 'Copy failed');
 };
+$('copyHead').onclick = async () => { const ok = await copyText(COLS.map(c => c[0]).join('\t')); setStatus(ok ? 'Column headers copied' : 'Copy failed'); };
 function currentRecord() { return S && S.record; }
 $('notes').addEventListener('input', () => { const rec = currentRecord(); if (rec) { rec.notes = $('notes').value; saveRuns(); } });
 $('backBtn').onclick = () => showPanel();
@@ -1107,7 +1125,7 @@ function showSummary(rec) {
   $('sumA').innerHTML = tr(rows.slice(0, half)); $('sumB').innerHTML = tr(rows.slice(half));
   $('sumOrders').textContent = rec.orderSequence && rec.orderSequence.length ? 'Order sequence: ' + rec.orderSequence.join(', ') : '';
   $('notes').value = rec.notes || '';
-  setStatus('');
+  setStatus(saveOk ? '' : 'This run could not be saved on this device. Download it now.');
   $('summary').classList.remove('hidden');
 }
 function esc(v) { return String(v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
