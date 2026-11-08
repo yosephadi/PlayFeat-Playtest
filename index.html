@@ -1,0 +1,1126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- ======================================================================
+  PLAYFEAT! LEVEL CONFIG — edit numbers here, no code changes needed.
+  Times are in seconds. Lanes are numbered 1-4 (left to right).
+  Dish points = sum of ingredient values. Must stay valid JSON.
+====================================================================== -->
+<script id="pf-config" type="application/json">
+{
+  "common": {
+    "durationSec": 90,
+    "warningAtSecLeft": 10,
+    "noNewCustomersAfterSec": 70,
+    "endEarlyWhenAllDone": true,
+    "grillSlots": 1,
+    "storageSlots": 2,
+    "bakeSec": 6,
+    "glowAfterDoneSec": 8,
+    "burnAfterDoneSec": 12,
+    "fallSpeedKHPerGravity": 1.25,
+    "fallAccelSec": 0.2,
+    "maxUsefulWaitSec": 6,
+    "lostPenalty": 10,
+    "patienceGreenAbove": 0.5,
+    "patienceRedBelow": 0.2,
+    "tips": { "green": 5, "yellow": 2, "red": 0 },
+    "angryTipMultiplier": 2
+  },
+  "ingredients": {
+    "flatbread": { "name": "Dusk Flatbread", "value": 10 },
+    "pepper":    { "name": "Ember Pepper",   "value": 10 },
+    "mushroom":  { "name": "Dusk Mushroom",  "value": 15 },
+    "sorbet":    { "name": "Sunset Sorbet base", "value": 10 },
+    "drizzle":   { "name": "Amber Drizzle",  "value": 5 }
+  },
+  "dishes": {
+    "pepper":   { "name": "Pepper Flatbread",   "short": "Pepper",   "base": "flatbread", "topping": "pepper" },
+    "mushroom": { "name": "Mushroom Flatbread", "short": "Mushroom", "base": "flatbread", "topping": "mushroom" },
+    "sorbet":   { "name": "Sunset Sorbet",      "short": "Sorbet",   "base": "sorbet",    "topping": "drizzle" }
+  },
+  "levels": {
+    "1-1": {
+      "name": "First Sale",
+      "gravity": 0.4, "bubbleLifeSec": 6, "bubbleEverySec": 3, "usefulBubbleShare": 0.8,
+      "maxWaiting": 2, "stars": [20, 40, 60],
+      "pool": ["flatbread", "pepper", "mushroom"],
+      "customers": [
+        { "t": 0,  "type": "regular", "order": "pepper", "patience": 45 },
+        { "t": 20, "type": "regular", "order": "pepper", "patience": 45 },
+        { "t": 40, "type": "regular", "order": "pepper", "patience": 45 },
+        { "t": 60, "type": "regular", "order": "pepper", "patience": 45 }
+      ],
+      "orderPool": {},
+      "starterBubbles": [
+        { "t": 0,  "ing": "flatbread", "lane": 2 },
+        { "t": 3,  "ing": "pepper",    "lane": 3 },
+        { "t": 6,  "ing": "flatbread", "lane": 1 },
+        { "t": 9,  "ing": "pepper",    "lane": 2 },
+        { "t": 12, "ing": "mushroom",  "lane": 4 },
+        { "t": 15, "ing": "flatbread", "lane": 2 },
+        { "t": 18, "ing": "pepper",    "lane": 3 }
+      ]
+    },
+    "1-2": {
+      "name": "Two Toppings",
+      "gravity": 0.5, "bubbleLifeSec": 5, "bubbleEverySec": 2.5, "usefulBubbleShare": 0.65,
+      "maxWaiting": 2, "stars": [20, 45, 65],
+      "pool": ["flatbread", "pepper", "mushroom"],
+      "customers": [
+        { "t": 0,  "type": "regular", "order": "pepper", "patience": 40 },
+        { "t": 15, "type": "regular", "order": "random", "patience": 40 },
+        { "t": 35, "type": "regular", "order": "random", "patience": 40 },
+        { "t": 50, "type": "regular", "order": "random", "patience": 40 },
+        { "t": 65, "type": "regular", "order": "random", "patience": 40 }
+      ],
+      "orderPool": { "pepper": 2, "mushroom": 2 },
+      "starterBubbles": [
+        { "t": 0, "ing": "flatbread", "lane": 2 },
+        { "t": 2, "ing": "pepper",    "lane": 3 }
+      ]
+    },
+    "1-3": {
+      "name": "The Angry Alien",
+      "gravity": 0.6, "bubbleLifeSec": 4, "bubbleEverySec": 2, "usefulBubbleShare": 0.6,
+      "maxWaiting": 3, "stars": [35, 60, 75],
+      "pool": ["flatbread", "pepper", "mushroom", "sorbet", "drizzle"],
+      "customers": [
+        { "t": 0,  "type": "regular", "order": "pepper", "patience": 35 },
+        { "t": 10, "type": "regular", "order": "random", "patience": 35 },
+        { "t": 25, "type": "regular", "order": "random", "patience": 35 },
+        { "t": 40, "type": "angry",   "order": "sorbet", "patience": 25 },
+        { "t": 55, "type": "regular", "order": "random", "patience": 35 },
+        { "t": 65, "type": "regular", "order": "random", "patience": 35 }
+      ],
+      "orderPool": { "pepper": 1, "mushroom": 1, "sorbet": 2 },
+      "starterBubbles": [
+        { "t": 0, "ing": "flatbread", "lane": 2 },
+        { "t": 2, "ing": "pepper",    "lane": 3 }
+      ]
+    },
+    "1-4": {
+      "name": "Double Trouble",
+      "gravity": 0.6, "bubbleLifeSec": 4, "bubbleEverySec": 2, "usefulBubbleShare": 0.6,
+      "maxWaiting": 3, "stars": [50, 85, 105],
+      "pool": ["flatbread", "pepper", "mushroom", "sorbet", "drizzle"],
+      "customers": [
+        { "t": 0,  "type": "regular", "order": "pepper", "patience": 35 },
+        { "t": 9,  "type": "regular", "order": "random", "patience": 35 },
+        { "t": 18, "type": "regular", "order": "random", "patience": 35 },
+        { "t": 27, "type": "angry",   "order": "sorbet", "patience": 25 },
+        { "t": 36, "type": "regular", "order": "random", "patience": 35 },
+        { "t": 45, "type": "regular", "order": "random", "patience": 35 },
+        { "t": 54, "type": "angry",   "order": "sorbet", "patience": 25 },
+        { "t": 63, "type": "regular", "order": "random", "patience": 35 }
+      ],
+      "orderPool": { "pepper": 1, "mushroom": 2, "sorbet": 2 },
+      "starterBubbles": [
+        { "t": 0, "ing": "flatbread", "lane": 2 },
+        { "t": 2, "ing": "pepper",    "lane": 3 }
+      ]
+    }
+  },
+  "marathon": {
+    "name": "Marathon",
+    "gravity": 0.6, "bubbleLifeSec": 4, "bubbleEverySec": 2, "usefulBubbleShare": 0.6,
+    "storageSlots": 2,
+    "maxLost": 3,
+    "firstOrder": "pepper",
+    "starterBubbles": [
+      { "t": 0, "ing": "flatbread", "lane": 2 },
+      { "t": 2, "ing": "pepper",    "lane": 3 }
+    ],
+    "patienceStart": 45, "angryPatienceStart": 25, "patienceMult": 0.97, "patienceFloor": 12,
+    "spacingStart": 15, "spacingMult": 0.95, "spacingFloor": 3,
+    "tipPerSecLeft": 3, "angryTipMultiplier": 1,
+    "stages": [
+      { "stage": 1, "fromDishes": 0, "maxWaiting": 2,
+        "pool": ["flatbread", "pepper", "mushroom"],
+        "group": [ { "type": "regular", "order": "pepper", "count": 3 },
+                   { "type": "regular", "order": "mushroom", "count": 2 } ] },
+      { "stage": 2, "fromDishes": 8, "maxWaiting": 3,
+        "pool": ["flatbread", "pepper", "mushroom", "sorbet", "drizzle"],
+        "group": [ { "type": "angry",   "order": "sorbet",   "count": 1 },
+                   { "type": "regular", "order": "pepper",   "count": 2 },
+                   { "type": "regular", "order": "mushroom", "count": 1 },
+                   { "type": "regular", "order": "sorbet",   "count": 1 } ] }
+    ]
+  }
+}
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>PlayFeat! playtest</title>
+<link rel="icon" href="data:,">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #1a0b26; color: #fff;
+    font-family: -apple-system, system-ui, "Segoe UI", sans-serif; overscroll-behavior: none;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+  body { position: fixed; inset: 0; }
+  canvas { position: absolute; touch-action: none; display: block; }
+  .ov { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(20, 6, 32, .8); z-index: 10; touch-action: manipulation; }
+  .hidden { display: none !important; }
+  .card { background: #2c1442; border: 2px solid #7d45b0; border-radius: 16px; padding: 18px 22px;
+    width: calc(100% - 40px); max-width: 760px; max-height: calc(100% - 40px); overflow: auto;
+    box-sizing: border-box; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+  h1, h2 { margin: 0 0 12px; font-size: 26px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+  label { font-size: 18px; min-width: 80px; }
+  input, textarea { -webkit-user-select: text; user-select: text; font-size: 18px; padding: 10px; border-radius: 8px;
+    border: 2px solid #7d45b0; background: #1a0b26; color: #fff; box-sizing: border-box; font-family: inherit; }
+  input { flex: 1; min-width: 200px; }
+  textarea { width: 100%; height: 56px; resize: vertical; }
+  button { font-size: 18px; padding: 12px 16px; border-radius: 10px; border: 0; background: #7d45b0; color: #fff;
+    font-family: inherit; font-weight: 600; touch-action: manipulation; cursor: pointer; }
+  button:active { filter: brightness(1.2); }
+  button.lv { min-width: 120px; }
+  button.lv.sel { background: #ff8a3c; color: #2c1442; }
+  button.big { font-size: 24px; padding: 14px 40px; background: #ff8a3c; color: #2c1442; }
+  button.small { font-size: 15px; padding: 8px 12px; }
+  .muted { color: #c9b3df; font-size: 15px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  table { border-collapse: collapse; font-size: 17px; width: 100%; }
+  td { padding: 4px 6px; border-bottom: 1px solid #45235f; }
+  td:first-child { color: #c9b3df; }
+  td:last-child { font-weight: 700; font-variant-numeric: tabular-nums; }
+  #status { min-height: 22px; }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<!-- Facilitator panel -->
+<div id="panel" class="ov"><div class="card">
+  <h1>PlayFeat! playtest</h1>
+  <div class="row"><label for="tester">Tester</label><input id="tester" placeholder="name or ID" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+  <div class="row" id="levelBtns"></div>
+  <div class="row"><button id="startBtn" class="big">Start</button></div>
+  <div class="row muted" id="runsInfo"></div>
+  <div class="row"><span class="muted">Download all runs:</span>
+    <button class="small dlCsv">CSV</button><button class="small dlJson">JSON</button></div>
+</div></div>
+
+<!-- Pause -->
+<div id="pauseOv" class="ov hidden"><div class="card" style="max-width:420px;text-align:center">
+  <h2>Paused</h2>
+  <div class="row" style="justify-content:center"><button id="resumeBtn" class="big">Resume</button></div>
+  <div class="row" style="justify-content:center"><button id="stopBtn">Stop run</button></div>
+</div></div>
+
+<!-- End summary -->
+<div id="summary" class="ov hidden"><div class="card">
+  <h2 id="sumTitle">Run summary</h2>
+  <div class="cols"><table id="sumA"></table><table id="sumB"></table></div>
+  <div class="muted" id="sumOrders"></div>
+  <div class="row"><textarea id="notes" placeholder="Notes"></textarea></div>
+  <div class="row"><button id="copyRow">Copy this run as one tab-separated row</button></div>
+  <div class="row"><span class="muted">Download all runs:</span>
+    <button class="dlCsv">CSV</button><button class="dlJson">JSON</button></div>
+  <div class="row muted" id="status"></div>
+  <div class="row"><button id="backBtn">Back to panel</button></div>
+</div></div>
+
+<script>
+'use strict';
+/* ====================================================================== */
+/* Setup                                                                   */
+/* ====================================================================== */
+const CFG = JSON.parse(document.getElementById('pf-config').textContent);
+const C = CFG.common, ING = CFG.ingredients, DISH = CFG.dishes;
+const W = 1024, H = 768;                // logical stage (4:3)
+const QS = new URLSearchParams(location.search);
+const SPEED = Math.min(20, Math.max(0.1, parseFloat(QS.get('speed')) || 1)); // test only
+const STEP = 1 / 60;
+
+const L = {
+  counterY: 572,
+  trash: { x: 18, y: 590, w: 132, h: 160 },
+  grill: { x: 310, y: 668, r: 80 },
+  plates: [{ x: 448, y: 668 }, { x: 558, y: 668 }],
+  bowl: { x: 668, y: 668 },
+  spotR: 48,
+  storage: [{ x: 784, y: 582, w: 226, h: 86 }, { x: 784, y: 676, w: 226, h: 86 }],
+  slots: [{ x: 800, y: 104, w: 214, h: 146 }, { x: 800, y: 256, w: 214, h: 146 }, { x: 800, y: 408, w: 214, h: 146 }],
+  lanes: [300, 420, 540, 660],
+  bubbleR: 46,
+  itemR: 38,
+  pauseBtn: { x: W - 54, y: 6, w: 48, h: 48 },
+};
+
+const EMOJI = { pepper: '🌶️', mushroom: '🍄', sorbet: '🍧', drizzle: '🍯' };
+const TINT = { flatbread: '#f5d58a', pepper: '#ff5a36', mushroom: '#b896ff', sorbet: '#ff9ec4', drizzle: '#ffc22e' };
+
+const rand = Math.random;
+const pick = a => a[Math.floor(rand() * a.length)];
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const r1 = v => Math.round(v * 10) / 10;
+const r2 = v => Math.round(v * 100) / 100;
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const inRect = (p, r, m = 0) => p.x >= r.x - m && p.x <= r.x + r.w + m && p.y >= r.y - m && p.y <= r.y + r.h + m;
+let uid = 1;
+
+// Config sanity checks (console only)
+for (const [id, lv] of Object.entries(CFG.levels)) {
+  const randoms = lv.customers.filter(c => c.order === 'random').length;
+  const pool = Object.values(lv.orderPool || {}).reduce((a, b) => a + b, 0);
+  if (randoms !== pool) console.warn(`Level ${id}: ${randoms} random customers but orderPool has ${pool}`);
+}
+
+/* ====================================================================== */
+/* Canvas + scaling                                                        */
+/* ====================================================================== */
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let scale = 1, dpr = 1;
+function resize() {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  scale = Math.min(vw / W, vh / H);
+  const cw = W * scale, ch = H * scale;
+  cv.style.width = cw + 'px'; cv.style.height = ch + 'px';
+  cv.style.left = ((vw - cw) / 2) + 'px'; cv.style.top = ((vh - ch) / 2) + 'px';
+  dpr = Math.min(3, window.devicePixelRatio || 1);
+  cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 200));
+document.addEventListener('gesturestart', e => e.preventDefault());
+document.addEventListener('dblclick', e => e.preventDefault());
+resize();
+
+/* ====================================================================== */
+/* Run state                                                               */
+/* ====================================================================== */
+let S = null; // current run
+
+function levelCfg(id) { return id === 'marathon' ? CFG.marathon : CFG.levels[id]; }
+function levelName(id) { return id === 'marathon' ? 'Marathon' : `${id} ${CFG.levels[id].name}`; }
+
+function startRun(levelId, tester) {
+  const isM = levelId === 'marathon';
+  const lv = levelCfg(levelId);
+  const storageSlots = lv.storageSlots ?? C.storageSlots;
+  S = {
+    id: 'run-' + Date.now().toString(36), levelId, isM, lv, tester,
+    startedAt: new Date().toISOString(),
+    t: 0, paused: false, ended: false, endReason: null,
+    score: 0, tips: 0, served: 0, lost: 0, burnt: 0, missed: 0, wrong: 0, vanished: 0, trashed: 0,
+    events: [], seated: [], outside: [], schedule: [], schedIdx: 0, orderSequence: [],
+    bubbles: [], falling: [], held: null, floats: [],
+    grill: new Array(C.grillSlots).fill(null), plates: [null, null], bowl: null,
+    storage: new Array(storageSlots).fill(null),
+    starters: (lv.starterBubbles || []).slice().sort((a, b) => a.t - b.t), starterIdx: 0,
+    nextSpawnT: 0, lastUsefulT: 0, lastLane: -1,
+    serveTimes: [], waits: [], stage: 1,
+  };
+  S.nextSpawnT = (S.starters.length ? S.starters[S.starters.length - 1].t : 0) + lv.bubbleEverySec;
+  if (isM) {
+    S.m = { patience: lv.patienceStart, angryPatience: lv.angryPatienceStart, spacing: lv.spacingStart,
+      nextArrivalT: 0, deck: [], groups: 0 };
+  } else {
+    buildSchedule();
+  }
+  const bubbleSpeed = (H + 2 * L.bubbleR) / lv.bubbleLifeSec, fallSpeed = lv.gravity * C.fallSpeedKHPerGravity * H;
+  if (bubbleSpeed >= fallSpeed) console.warn('Bubbles drift faster than items fall in', levelId);
+  log('run_start', { level: levelId, tester, orderSequence: S.orderSequence.slice() });
+}
+
+function buildSchedule() {
+  const pool = [];
+  for (const [k, n] of Object.entries(S.lv.orderPool || {})) for (let i = 0; i < n; i++) pool.push(k);
+  shuffle(pool);
+  for (const e of S.lv.customers) {
+    if (e.t > C.noNewCustomersAfterSec) continue;
+    let order = e.order === 'random' ? pool.shift() : e.order;
+    if (!order) { console.warn('orderPool ran out, using pepper'); order = 'pepper'; }
+    S.schedule.push({ t: e.t, type: e.type || 'regular', order, patience: e.patience });
+  }
+  S.schedule.sort((a, b) => a.t - b.t);
+  S.orderSequence = S.schedule.map(c => (c.type === 'angry' ? 'ANGRY ' : '') + c.order);
+}
+
+function log(e, data) {
+  const ev = Object.assign({ t: r2(S.t), e }, data || {});
+  S.events.push(ev);
+}
+
+function stageIndex() {
+  const st = CFG.marathon.stages; let idx = 0;
+  for (let i = 0; i < st.length; i++) if (S.served >= st[i].fromDishes) idx = i;
+  return idx;
+}
+const stageCfg = () => CFG.marathon.stages[stageIndex()];
+const maxWaiting = () => S.isM ? stageCfg().maxWaiting : S.lv.maxWaiting;
+const currentPool = () => S.isM ? stageCfg().pool : S.lv.pool;
+
+/* ====================================================================== */
+/* Items                                                                   */
+/* ====================================================================== */
+function makeItem(ing) { return ing === 'flatbread' ? { id: uid++, t: 'flatbread', st: 'raw', bake: 0, over: 0 } : { id: uid++, t: ing }; }
+function describe(it) {
+  if (!it) return '';
+  if (it.t === 'dish') return 'dish:' + it.dish;
+  if (it.t === 'flatbread') return 'flatbread(' + it.st + ')';
+  return it.t;
+}
+function dishFor(base, topping) {
+  for (const [k, d] of Object.entries(DISH)) if (d.base === base && d.topping === topping) return k;
+  return null;
+}
+function dishPoints(k) { const d = DISH[k]; return ING[d.base].value + ING[d.topping].value; }
+
+/* ====================================================================== */
+/* Customers                                                               */
+/* ====================================================================== */
+function arrive(spec) {
+  const c = { id: uid++, type: spec.type, order: spec.order, patienceMax: spec.patience, left: spec.patience,
+    arrivalT: S.t, seatedT: null, drawY: null };
+  S.outside.push(c);
+  log('customer_arrived', { cid: c.id, order: c.order, type: c.type, patience: r2(c.patienceMax) });
+}
+
+function seatCustomers() {
+  while (S.seated.length < maxWaiting() && S.outside.length) {
+    const c = S.outside.shift();
+    c.seatedT = S.t; c.left = c.patienceMax;
+    S.seated.push(c);
+    log('customer_seated', { cid: c.id, waitedOutside: r2(S.t - c.arrivalT) });
+  }
+}
+
+function zone(c) {
+  const f = c.left / c.patienceMax;
+  return f > C.patienceGreenAbove ? 'green' : (f >= C.patienceRedBelow ? 'yellow' : 'red');
+}
+function liveTip(c) {
+  if (S.isM) return Math.floor(c.left / S.lv.tipPerSecLeft) * (c.type === 'angry' ? S.lv.angryTipMultiplier : 1);
+  return C.tips[zone(c)] * (c.type === 'angry' ? C.angryTipMultiplier : 1);
+}
+function slotCenter(i) { const s = L.slots[i]; return { x: s.x + s.w / 2, y: s.y + s.h / 2 }; }
+
+function serve(c, it) {
+  const i = S.seated.indexOf(c), sc = slotCenter(i);
+  if (it.t !== 'dish' || it.dish !== c.order) {
+    S.wrong++;
+    log('wrong_dish_refused', { cid: c.id, dish: describe(it), wanted: c.order });
+    addFloat('✗', sc.x, sc.y, '#ff4f4f', 44);
+    return;
+  }
+  const pts = dishPoints(c.order), tip = liveTip(c), wait = S.t - c.seatedT;
+  S.score += pts; S.tips += tip; S.served++;
+  S.waits.push(wait); S.serveTimes.push(S.t);
+  log('dish_served', { cid: c.id, dish: c.order, angry: c.type === 'angry', points: pts, tip,
+    waitSec: r2(wait), patienceLeftSec: r2(c.left), patienceLeftPct: Math.round(100 * c.left / c.patienceMax), zone: zone(c) });
+  S.seated.splice(i, 1);
+  addFloat('+' + pts, sc.x, sc.y - 10, '#7dff8a', 40);
+  if (tip > 0) addFloat('+' + tip + ' tip', sc.x, sc.y + 34, '#ffd84a', 28);
+  if (S.isM) rampAfterServe();
+}
+
+function loseCustomer(c) {
+  const i = S.seated.indexOf(c), sc = slotCenter(i);
+  S.seated.splice(i, 1);
+  S.lost++;
+  const before = S.score;
+  S.score = Math.max(0, S.score - C.lostPenalty);
+  log('customer_lost', { cid: c.id, order: c.order, type: c.type, pointsLost: before - S.score });
+  addFloat('-' + C.lostPenalty, sc.x, sc.y, '#ff4f4f', 48);
+  if (S.isM && S.lost >= S.lv.maxLost) endRun('lost ' + S.lv.maxLost);
+}
+
+/* Marathon */
+function dealGroup() {
+  const st = stageCfg(), g = [];
+  for (const e of st.group) for (let i = 0; i < e.count; i++) g.push({ type: e.type, order: e.order });
+  shuffle(g);
+  if (S.m.groups === 0 && S.lv.firstOrder) {
+    const i = g.findIndex(x => x.order === S.lv.firstOrder && x.type === 'regular');
+    if (i > 0) [g[0], g[i]] = [g[i], g[0]];
+  }
+  S.m.groups++;
+  S.m.deck.push(...g);
+  log('group_dealt', { stage: st.stage, orders: g.map(x => (x.type === 'angry' ? 'ANGRY ' : '') + x.order) });
+}
+function nextMarathonSpec() {
+  if (!S.m.deck.length) dealGroup();
+  const s = S.m.deck.shift();
+  return { type: s.type, order: s.order, patience: s.type === 'angry' ? S.m.angryPatience : S.m.patience };
+}
+function rampAfterServe() {
+  const m = S.m, lv = S.lv;
+  m.patience = Math.max(lv.patienceFloor, m.patience * lv.patienceMult);
+  m.angryPatience = Math.max(lv.patienceFloor, m.angryPatience * lv.patienceMult);
+  m.spacing = Math.max(lv.spacingFloor, m.spacing * lv.spacingMult);
+  const st = stageCfg().stage;
+  if (st > S.stage) { S.stage = st; log('stage_reached', { stage: st, dishesServed: S.served }); }
+}
+
+/* ====================================================================== */
+/* Bubbles                                                                 */
+/* ====================================================================== */
+function computeNeeded() {
+  const inv = {};
+  const add = k => { inv[k] = (inv[k] || 0) + 1; };
+  const addItem = it => {
+    if (!it) return;
+    if (it.t === 'dish') add('dish:' + it.dish);
+    else if (it.t === 'flatbread') { if (it.st !== 'burnt') add('flatbread'); }
+    else add(it.t);
+  };
+  if (S.held) addItem(S.held.item);
+  S.falling.forEach(f => addItem(f.item));
+  S.grill.forEach(addItem); S.plates.forEach(addItem); addItem(S.bowl); S.storage.forEach(addItem);
+  S.bubbles.forEach(b => add(b.ing));
+  const missing = [], any = [];
+  for (const c of S.seated) {
+    const d = DISH[c.order];
+    any.push(d.base, d.topping);
+    if (inv['dish:' + c.order] > 0) { inv['dish:' + c.order]--; continue; }
+    for (const k of [d.base, d.topping]) { if (inv[k] > 0) inv[k]--; else missing.push(k); }
+  }
+  return { missing, any };
+}
+
+function freeLane(preferred) {
+  const busy = l => S.bubbles.some(b => b.lane === l && b.y < L.bubbleR * 2.4);
+  if (preferred != null) return preferred;
+  let opts = [0, 1, 2, 3].filter(l => !busy(l) && l !== S.lastLane);
+  if (!opts.length) opts = [0, 1, 2, 3].filter(l => !busy(l));
+  if (!opts.length) opts = [0, 1, 2, 3];
+  return pick(opts);
+}
+
+function spawnBubble(ing, lane, kind) {
+  const need = computeNeeded();
+  const usefulSet = need.missing.length ? need.missing : need.any;
+  const useful = usefulSet.includes(ing);
+  if (useful || !usefulSet.length) S.lastUsefulT = S.t;
+  S.bubbles.push({ id: uid++, ing, lane, x: L.lanes[lane], y: -L.bubbleR });
+  S.lastLane = lane;
+  log('bubble_spawned', { ing, lane: lane + 1, useful, kind });
+}
+
+function spawnRandom() {
+  const need = computeNeeded(), pool = currentPool(), every = S.lv.bubbleEverySec;
+  const usefulSet = (need.missing.length ? need.missing : need.any).filter(k => pool.includes(k));
+  let ing, kind = 'random';
+  if (!usefulSet.length) ing = pick(pool);
+  else {
+    const force = (S.t + every - S.lastUsefulT) > C.maxUsefulWaitSec;
+    if (force || rand() < S.lv.usefulBubbleShare) { ing = pick(usefulSet); kind = force ? 'forced-useful' : 'useful'; }
+    else { const others = pool.filter(k => !usefulSet.includes(k)); ing = pick(others.length ? others : pool); }
+  }
+  spawnBubble(ing, freeLane(), kind);
+}
+
+/* ====================================================================== */
+/* Simulation step                                                         */
+/* ====================================================================== */
+function step(dt) {
+  S.t += dt;
+  // arrivals
+  if (S.isM) {
+    if (S.t >= S.m.nextArrivalT) { arrive(nextMarathonSpec()); S.m.nextArrivalT = S.t + S.m.spacing; }
+  } else {
+    while (S.schedIdx < S.schedule.length && S.schedule[S.schedIdx].t <= S.t) arrive(S.schedule[S.schedIdx++]);
+  }
+  seatCustomers();
+  // patience
+  for (const c of S.seated.slice()) {
+    c.left -= dt;
+    if (c.left <= 0) { c.left = 0; loseCustomer(c); if (S.ended) return; }
+  }
+  seatCustomers();
+  // grill
+  for (let i = 0; i < S.grill.length; i++) {
+    const it = S.grill[i]; if (!it) continue;
+    if (it.st === 'raw') { it.bake += dt; if (it.bake >= C.bakeSec) { it.st = 'baked'; it.over = it.bake - C.bakeSec; } }
+    else if (it.st === 'baked') {
+      const before = it.over; it.over += dt;
+      if (before < C.glowAfterDoneSec && it.over >= C.glowAfterDoneSec) log('flatbread_glowing', { slot: i + 1 });
+      if (it.over >= C.burnAfterDoneSec) { it.st = 'burnt'; S.burnt++; log('flatbread_burnt', { slot: i + 1 }); }
+    }
+  }
+  // bubble spawns
+  while (S.starterIdx < S.starters.length && S.starters[S.starterIdx].t <= S.t) {
+    const st = S.starters[S.starterIdx++];
+    spawnBubble(st.ing, Math.max(0, Math.min(3, (st.lane || 1) - 1)), 'starter');
+  }
+  if (S.t >= S.nextSpawnT) { spawnRandom(); S.nextSpawnT += S.lv.bubbleEverySec; }
+  // bubble drift
+  const bv = (H + 2 * L.bubbleR) / S.lv.bubbleLifeSec;
+  for (let i = S.bubbles.length - 1; i >= 0; i--) {
+    const b = S.bubbles[i]; b.y += bv * dt;
+    if (b.y - L.bubbleR > H) { S.bubbles.splice(i, 1); S.missed++; log('bubble_missed', { ing: b.ing, lane: b.lane + 1 }); }
+  }
+  // falling items
+  const vmax = S.lv.gravity * C.fallSpeedKHPerGravity * H;
+  for (let i = S.falling.length - 1; i >= 0; i--) {
+    const f = S.falling[i]; f.age += dt;
+    f.y += vmax * Math.min(1, f.age / C.fallAccelSec) * dt;
+    if (f.y - L.itemR > H) { S.falling.splice(i, 1); S.vanished++; log('item_dropped_vanished', { item: describe(f.item) }); }
+  }
+  // floats
+  for (let i = S.floats.length - 1; i >= 0; i--) { S.floats[i].age += dt; if (S.floats[i].age > 1.3) S.floats.splice(i, 1); }
+  // story day end
+  if (!S.isM) {
+    const allArrived = S.schedIdx >= S.schedule.length;
+    const nobody = !S.seated.length && !S.outside.length;
+    if (allArrived && nobody && (S.t >= C.durationSec || C.endEarlyWhenAllDone)) endRun('completed');
+  }
+}
+
+function addFloat(text, x, y, color, size) { S.floats.push({ text, x, y, color, size: size || 32, age: 0 }); }
+
+/* ====================================================================== */
+/* Input                                                                   */
+/* ====================================================================== */
+let activePointer = null;
+function toLogical(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale };
+}
+function grillSlotPos(i) {
+  const n = S ? S.grill.length : C.grillSlots;
+  if (n === 1) return { x: L.grill.x, y: L.grill.y };
+  const span = L.grill.r * 1.1;
+  return { x: L.grill.x - span / 2 + span * i / (n - 1), y: L.grill.y };
+}
+function slotAt(p) { for (let i = 0; i < L.slots.length; i++) if (inRect(p, L.slots[i])) return i; return -1; }
+
+function pickupAt(p) {
+  // 1. catch a falling item mid-air
+  let best = -1, bd = 1e9;
+  S.falling.forEach((f, i) => { const d = dist(p, f); if (d < L.itemR + 24 && d < bd) { bd = d; best = i; } });
+  if (best >= 0) { const f = S.falling.splice(best, 1)[0]; log('item_caught_midair', { item: describe(f.item) }); return { item: f.item, fromBubble: false }; }
+  const tryBubbles = () => {
+    let bi = -1, bdd = 1e9;
+    S.bubbles.forEach((b, i) => { const d = dist(p, b); if (d < L.bubbleR + 14 && d < bdd) { bdd = d; bi = i; } });
+    if (bi < 0) return null;
+    const b = S.bubbles.splice(bi, 1)[0];
+    return { item: makeItem(b.ing), fromBubble: true, ing: b.ing };
+  };
+  const tryStations = () => {
+    if (dist(p, L.grill) < L.grill.r + 8) {
+      let gi = -1, gd = 1e9;
+      S.grill.forEach((it, i) => { if (it) { const d = dist(p, grillSlotPos(i)); if (d < gd) { gd = d; gi = i; } } });
+      if (gi >= 0) { const it = S.grill[gi]; S.grill[gi] = null; return { item: it, fromBubble: false }; }
+    }
+    for (let i = 0; i < L.plates.length; i++) if (S.plates[i] && dist(p, L.plates[i]) < L.spotR + 10) { const it = S.plates[i]; S.plates[i] = null; return { item: it, fromBubble: false }; }
+    if (S.bowl && dist(p, L.bowl) < L.spotR + 10) { const it = S.bowl; S.bowl = null; return { item: it, fromBubble: false }; }
+    for (let i = 0; i < S.storage.length; i++) if (S.storage[i] && inRect(p, L.storage[i], 4)) { const it = S.storage[i]; S.storage[i] = null; return { item: it, fromBubble: false }; }
+    return null;
+  };
+  return p.y > L.counterY - 10 ? (tryStations() || tryBubbles()) : (tryBubbles() || tryStations());
+}
+
+function drop(p) {
+  const h = S.held; S.held = null;
+  const it = h.item;
+  if (h.fromBubble) log('bubble_popped', { ing: h.ing });
+  // serving window
+  const si = slotAt(p);
+  if (si >= 0 && S.seated[si] && it.t === 'dish') { serve(S.seated[si], it); return; }
+  // trash
+  if (inRect(p, L.trash, 10)) {
+    S.trashed++; log('item_thrown_away', { item: describe(it) });
+    addFloat('🗑', L.trash.x + L.trash.w / 2, L.trash.y + 20, '#fff', 30);
+    return;
+  }
+  // grill
+  if (dist(p, L.grill) < L.grill.r + 12 && it.t === 'flatbread' && it.st !== 'burnt') {
+    let gi = -1, gd = 1e9;
+    S.grill.forEach((g, i) => { if (!g) { const d = dist(p, grillSlotPos(i)); if (d < gd) { gd = d; gi = i; } } });
+    if (gi >= 0) { S.grill[gi] = it; log('item_placed', { item: describe(it), on: 'grill' }); return; }
+  }
+  // plates
+  for (let i = 0; i < L.plates.length; i++) {
+    if (dist(p, L.plates[i]) >= L.spotR + 14) continue;
+    const cur = S.plates[i];
+    if (!cur && ((it.t === 'flatbread' && it.st === 'baked') || (it.t === 'dish' && DISH[it.dish].base === 'flatbread'))) {
+      S.plates[i] = it; log('item_placed', { item: describe(it), on: 'plate' + (i + 1) }); return;
+    }
+    if (cur && cur.t === 'flatbread' && cur.st === 'baked') {
+      const d = dishFor('flatbread', it.t);
+      if (d) { S.plates[i] = { id: uid++, t: 'dish', dish: d }; log('dish_assembled', { dish: d, on: 'plate' + (i + 1) }); return; }
+    }
+    break;
+  }
+  // bowl
+  if (dist(p, L.bowl) < L.spotR + 14) {
+    const cur = S.bowl;
+    if (!cur && (it.t === 'sorbet' || (it.t === 'dish' && DISH[it.dish].base === 'sorbet'))) { S.bowl = it; log('item_placed', { item: describe(it), on: 'bowl' }); return; }
+    if (cur && cur.t === 'sorbet') {
+      const d = dishFor('sorbet', it.t);
+      if (d) { S.bowl = { id: uid++, t: 'dish', dish: d }; log('dish_assembled', { dish: d, on: 'bowl' }); return; }
+    }
+  }
+  // storage
+  for (let i = 0; i < S.storage.length; i++) {
+    if (!inRect(p, L.storage[i], 6)) continue;
+    if (it.t === 'flatbread' && it.st === 'burnt') break;
+    let target = S.storage[i] ? S.storage.findIndex(x => !x) : i;
+    if (target >= 0) { S.storage[target] = it; log('item_stored', { item: describe(it), slot: target + 1 }); return; }
+    break;
+  }
+  // nothing accepted it: it falls
+  S.falling.push({ item: it, x: p.x, y: p.y, age: 0 });
+  log('item_released_in_air', { item: describe(it), x: Math.round(p.x), y: Math.round(p.y) });
+}
+
+cv.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if (!S || S.ended) return;
+  const p = toLogical(e);
+  if (!S.paused && inRect(p, L.pauseBtn, 6)) { pauseRun(); return; }
+  if (S.paused || S.held || activePointer !== null) return;
+  const got = pickupAt(p);
+  if (!got) return;
+  activePointer = e.pointerId;
+  try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  S.held = Object.assign(got, { x: p.x, y: p.y });
+});
+cv.addEventListener('pointermove', e => {
+  if (e.pointerId !== activePointer || !S || !S.held) return;
+  const p = toLogical(e); S.held.x = p.x; S.held.y = p.y;
+});
+function endPointer(e) {
+  if (e.pointerId !== activePointer) return;
+  activePointer = null;
+  if (!S || !S.held || S.ended) return;
+  const p = e.type === 'pointercancel' ? { x: S.held.x, y: S.held.y } : toLogical(e);
+  drop(p);
+}
+cv.addEventListener('pointerup', endPointer);
+cv.addEventListener('pointercancel', endPointer);
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+cv.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+
+/* ====================================================================== */
+/* Rendering                                                               */
+/* ====================================================================== */
+function rr(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function txt(s, x, y, size, color, align = 'center', weight = 700) {
+  ctx.font = `${weight} ${size}px -apple-system, system-ui, sans-serif`;
+  ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillText(s, x, y);
+}
+function emoji(ch, x, y, size) {
+  ctx.font = `${size}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#000'; ctx.fillText(ch, x, y + size * 0.06);
+}
+function flatbreadShape(x, y, s, st) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.fillStyle = st === 'raw' ? '#f7e6bb' : st === 'baked' ? '#d9933a' : '#2a1a10';
+  ctx.strokeStyle = st === 'burnt' ? '#000' : '#8a5a22'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.ellipse(0, 0, 38, 26, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = st === 'raw' ? '#e4cb8c' : st === 'baked' ? '#a8621c' : '#120a05';
+  for (const [dx, dy] of [[-18, -8], [6, -12], [18, 4], [-6, 10], [-22, 8]]) { ctx.beginPath(); ctx.arc(dx, dy, 3.5, 0, Math.PI * 2); ctx.fill(); }
+  if (st === 'burnt') { ctx.strokeStyle = '#777'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-10, -30); ctx.quadraticCurveTo(-18, -42, -8, -52); ctx.moveTo(8, -30); ctx.quadraticCurveTo(0, -42, 10, -52); ctx.stroke(); }
+  ctx.restore();
+}
+function drawItem(it, x, y, s = 1) {
+  if (it.t === 'flatbread') flatbreadShape(x, y, s, it.st);
+  else if (it.t === 'dish') {
+    const d = DISH[it.dish];
+    if (d.base === 'flatbread') {
+      flatbreadShape(x, y, s, 'baked');
+      emoji(EMOJI[d.topping], x - 13 * s, y - 2 * s, 28 * s); emoji(EMOJI[d.topping], x + 14 * s, y + 3 * s, 28 * s);
+    } else {
+      emoji(EMOJI.sorbet, x, y, 54 * s);
+      ctx.fillStyle = '#ffb300'; ctx.strokeStyle = '#a86a00'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(x, y - 20 * s, 20 * s, 8 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      emoji(EMOJI.drizzle, x + 26 * s, y + 18 * s, 24 * s);
+    }
+  } else emoji(EMOJI[it.t], x, y, 50 * s);
+}
+function drawBubble(x, y, ing, s = 1) {
+  const R = L.bubbleR * s;
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
+  ctx.lineWidth = 5; ctx.strokeStyle = TINT[ing]; ctx.stroke();
+  ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.beginPath(); ctx.arc(x, y, R - 4, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(x - R * 0.45, y - R * 0.5, R * 0.18, R * 0.1, -0.6, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawBackground() {
+  const g = ctx.createLinearGradient(0, 0, 0, L.counterY);
+  g.addColorStop(0, '#ff7f3a'); g.addColorStop(0.6, '#ffae5c'); g.addColorStop(1, '#ffd08a');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, L.counterY);
+  ctx.fillStyle = '#ffe9b0'; ctx.beginPath(); ctx.arc(720, 150, 46, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffd3e6'; ctx.beginPath(); ctx.arc(200, 210, 22, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#e88c4f'; ctx.beginPath(); ctx.ellipse(220, L.counterY + 10, 360, 90, 0, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = '#d9763d'; ctx.beginPath(); ctx.ellipse(650, L.counterY + 20, 420, 70, 0, Math.PI, 0); ctx.fill();
+  // counter
+  ctx.fillStyle = '#5b2a86'; ctx.fillRect(0, L.counterY, W, H - L.counterY);
+  ctx.fillStyle = '#7d45b0'; ctx.fillRect(0, L.counterY, W, 10);
+}
+
+function drawStations() {
+  // trash
+  const t = L.trash;
+  ctx.fillStyle = '#3c3f55'; rr(t.x + 14, t.y + 24, t.w - 28, t.h - 34, 10); ctx.fill();
+  ctx.fillStyle = '#5a5e7c'; rr(t.x + 6, t.y + 10, t.w - 12, 18, 6); ctx.fill();
+  ctx.strokeStyle = '#2a2c3d'; ctx.lineWidth = 4;
+  for (const dx of [36, 66, 96]) { ctx.beginPath(); ctx.moveTo(t.x + dx, t.y + 44); ctx.lineTo(t.x + dx, t.y + t.h - 24); ctx.stroke(); }
+  txt('TRASH', t.x + t.w / 2, H - 10, 14, 'rgba(255,255,255,.75)');
+  // grill (sun mirror)
+  const gr = L.grill;
+  ctx.fillStyle = '#ffcf4a';
+  for (let k = 0; k < 16; k++) {
+    const a = k / 16 * Math.PI * 2;
+    ctx.beginPath(); ctx.moveTo(gr.x + Math.cos(a - 0.08) * gr.r, gr.y + Math.sin(a - 0.08) * gr.r * 0.9);
+    ctx.lineTo(gr.x + Math.cos(a) * (gr.r + 10), gr.y + Math.sin(a) * (gr.r * 0.9 + 10));
+    ctx.lineTo(gr.x + Math.cos(a + 0.08) * gr.r, gr.y + Math.sin(a + 0.08) * gr.r * 0.9); ctx.fill();
+  }
+  const gg = ctx.createRadialGradient(gr.x - 15, gr.y - 15, 5, gr.x, gr.y, gr.r);
+  gg.addColorStop(0, '#fffbe0'); gg.addColorStop(0.6, '#e8b850'); gg.addColorStop(1, '#a8701e');
+  ctx.fillStyle = gg; ctx.beginPath(); ctx.ellipse(gr.x, gr.y, gr.r, gr.r * 0.9, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#7a4c10'; ctx.lineWidth = 4; ctx.stroke();
+  txt('SUN GRILL', gr.x, H - 10, 14, 'rgba(255,255,255,.75)');
+  // plates + bowl
+  for (const p of L.plates) {
+    ctx.fillStyle = '#f4f1fa'; ctx.beginPath(); ctx.arc(p.x, p.y, L.spotR, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#c7bfd8'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x, p.y, L.spotR - 10, 0, Math.PI * 2); ctx.stroke();
+  }
+  txt('PLATES', (L.plates[0].x + L.plates[1].x) / 2, H - 10, 14, 'rgba(255,255,255,.75)');
+  const b = L.bowl;
+  ctx.fillStyle = '#6cc6f0'; ctx.beginPath(); ctx.arc(b.x, b.y, L.spotR, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#3c8fbf'; ctx.beginPath(); ctx.ellipse(b.x, b.y - 4, L.spotR - 10, L.spotR - 18, 0, 0, Math.PI * 2); ctx.fill();
+  txt('BOWL', b.x, H - 10, 14, 'rgba(255,255,255,.75)');
+  // storage
+  for (let i = 0; i < S.storage.length && i < L.storage.length; i++) {
+    const s = L.storage[i];
+    ctx.fillStyle = '#a8743f'; rr(s.x, s.y, s.w, s.h, 8); ctx.fill();
+    ctx.strokeStyle = '#6e4520'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s.x + 6, s.y + s.h / 2); ctx.lineTo(s.x + s.w - 6, s.y + s.h / 2); ctx.stroke();
+  }
+  S.storage.forEach((it, i) => { if (!it && L.storage[i]) txt('STORAGE', L.storage[i].x + L.storage[i].w / 2, L.storage[i].y + L.storage[i].h / 2, 15, 'rgba(255,255,255,.45)'); });
+
+  // contents
+  S.grill.forEach((it, i) => {
+    if (!it) return;
+    const p = grillSlotPos(i);
+    if (it.st === 'baked' && it.over >= C.glowAfterDoneSec) {
+      const pulse = 0.5 + 0.5 * Math.sin(S.t * 10);
+      ctx.fillStyle = `rgba(255,${Math.round(80 + 60 * pulse)},0,${0.35 + 0.35 * pulse})`;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 62, 0, Math.PI * 2); ctx.fill();
+    }
+    drawItem(it, p.x, p.y, 1);
+    // progress ring
+    let frac, col;
+    if (it.st === 'raw') { frac = it.bake / C.bakeSec; col = '#fff36b'; }
+    else if (it.st === 'baked') { frac = it.over / C.burnAfterDoneSec; col = it.over >= C.glowAfterDoneSec ? '#ff2a00' : '#4cff6a'; }
+    else { frac = 1; col = '#000'; }
+    ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(p.x, p.y, 50, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = col; ctx.beginPath(); ctx.arc(p.x, p.y, 50, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, frac)); ctx.stroke();
+    if (it.st === 'baked' && it.over >= C.glowAfterDoneSec) txt('!', p.x + 44, p.y - 44, 34, '#fff');
+  });
+  S.plates.forEach((it, i) => { if (it) drawItem(it, L.plates[i].x, L.plates[i].y, 1); });
+  if (S.bowl) drawItem(S.bowl, L.bowl.x, L.bowl.y, 1);
+  S.storage.forEach((it, i) => { if (it && L.storage[i]) drawItem(it, L.storage[i].x + L.storage[i].w / 2, L.storage[i].y + L.storage[i].h / 2, 0.95); });
+}
+
+function drawAlien(x, y, angry) {
+  ctx.strokeStyle = angry ? '#a01818' : '#2f8a2c'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(x - 14, y - 32); ctx.lineTo(x - 22, y - 54); ctx.moveTo(x + 14, y - 32); ctx.lineTo(x + 22, y - 54); ctx.stroke();
+  ctx.fillStyle = angry ? '#ff4a4a' : '#9b6bff';
+  ctx.beginPath(); ctx.arc(x - 22, y - 56, 6, 0, Math.PI * 2); ctx.arc(x + 22, y - 56, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = angry ? '#ff5a5a' : '#6fd36b';
+  ctx.beginPath(); ctx.ellipse(x, y, 34, 38, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = angry ? '#a01818' : '#2f8a2c'; ctx.lineWidth = 3; ctx.stroke();
+  for (const dx of [-14, 0, 14]) {
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x + dx, y - 8, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(x + dx, y - 7, 3.5, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.strokeStyle = '#111'; ctx.lineWidth = 3; ctx.beginPath();
+  if (angry) {
+    ctx.moveTo(x - 22, y - 22); ctx.lineTo(x - 8, y - 16); ctx.moveTo(x + 22, y - 22); ctx.lineTo(x + 8, y - 16);
+    ctx.moveTo(x - 12, y + 20); ctx.quadraticCurveTo(x, y + 10, x + 12, y + 20);
+  } else { ctx.moveTo(x - 12, y + 14); ctx.quadraticCurveTo(x, y + 24, x + 12, y + 14); }
+  ctx.stroke();
+  if (angry) {
+    for (let k = 0; k < 3; k++) {
+      const ph = ((S.t * 1.3 + k / 3) % 1);
+      ctx.fillStyle = `rgba(255,255,255,${0.8 * (1 - ph)})`;
+      ctx.beginPath(); ctx.arc(x - 30 + k * 30, y - 44 - ph * 30, 7 + ph * 6, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+}
+
+function drawWindow(hoverSlot) {
+  // truck frame + awning
+  ctx.fillStyle = '#3b1d5a'; rr(788, 66, 236, 498, 12); ctx.fill();
+  for (let k = 0; k < 8; k++) { ctx.fillStyle = k % 2 ? '#fff4e0' : '#ff5a8a'; ctx.fillRect(788 + k * 29.5, 66, 29.5, 30); }
+  const mw = maxWaiting();
+  for (let i = 0; i < L.slots.length; i++) {
+    const s = L.slots[i];
+    ctx.fillStyle = i < mw ? '#4d2a70' : '#2a1640'; rr(s.x, s.y, s.w, s.h, 10); ctx.fill();
+    if (i >= mw) {
+      ctx.strokeStyle = '#3d2258'; ctx.lineWidth = 3;
+      for (let yy = s.y + 14; yy < s.y + s.h; yy += 16) { ctx.beginPath(); ctx.moveTo(s.x + 8, yy); ctx.lineTo(s.x + s.w - 8, yy); ctx.stroke(); }
+    }
+    if (i === hoverSlot) { ctx.strokeStyle = '#fff36b'; ctx.lineWidth = 7; rr(s.x, s.y, s.w, s.h, 10); ctx.stroke(); }
+  }
+  S.seated.forEach((c, i) => {
+    const s = L.slots[i];
+    c.drawY = c.drawY == null ? s.y : c.drawY + (s.y - c.drawY) * 0.2;
+    const x = s.x, y = c.drawY;
+    // ticket
+    ctx.fillStyle = '#fffaf0'; rr(x + 8, y + 8, 116, 100, 8); ctx.fill();
+    ctx.fillStyle = '#e8dcc8'; ctx.fillRect(x + 8, y + 8, 116, 6);
+    drawItem({ t: 'dish', dish: c.order }, x + 66, y + 50, 0.85);
+    txt(DISH[c.order].short, x + 66, y + 96, 16, '#3b1d5a');
+    drawAlien(x + 170, y + 68, c.type === 'angry');
+    // patience bar
+    const f = Math.max(0, c.left / c.patienceMax), z = zone(c);
+    ctx.fillStyle = '#1a0b26'; rr(x + 8, y + 116, 198, 22, 6); ctx.fill();
+    let col = z === 'green' ? '#3ee05a' : z === 'yellow' ? '#ffd23a' : '#ff3030';
+    if (z === 'red' && Math.sin(S.t * 14) < 0) col = '#7a1010';
+    ctx.fillStyle = col; rr(x + 10, y + 118, Math.max(0, 194 * f), 18, 5); ctx.fill();
+    if (S.isM) {
+      ctx.fillStyle = '#ffd84a'; rr(x + 138, y + 92, 66, 22, 6); ctx.fill();
+      txt('tip ' + liveTip(c), x + 171, y + 103, 15, '#3b1d5a');
+    }
+  });
+  if (S.outside.length) {
+    ctx.fillStyle = '#1a0b26'; rr(836, 38, 150, 26, 13); ctx.fill();
+    txt('+' + S.outside.length + ' waiting outside', 911, 51, 14, '#fff');
+  }
+}
+
+function fmt(sec) { sec = Math.max(0, Math.floor(sec)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
+
+function drawHUD() {
+  ctx.fillStyle = 'rgba(40,15,60,0.85)'; rr(10, 10, 240, S.isM ? 92 : 146, 12); ctx.fill();
+  if (!S.isM) {
+    const left = C.durationSec - S.t;
+    if (left >= 0) {
+      const warn = left <= C.warningAtSecLeft && Math.sin(S.t * 10) > -0.3;
+      txt(fmt(Math.ceil(left)), 24, 40, 38, left <= C.warningAtSecLeft ? (warn ? '#ff4f4f' : '#fff') : '#fff', 'left', 800);
+    } else {
+      txt('OVERTIME +' + fmt(-left), 24, 40, 24, '#ff5ee0', 'left', 800);
+    }
+  }
+  const y2 = S.isM ? 36 : 80;
+  txt('Score ' + S.score, 24, y2, 22, '#fff', 'left');
+  txt('Tips ' + S.tips, 150, y2, 22, '#ffd84a', 'left');
+  if (S.isM) {
+    txt('Lost ' + S.lost + '/' + S.lv.maxLost, 24, 72, 22, '#ff9c9c', 'left');
+    txt('Served ' + S.served, 150, 72, 22, '#9cffb0', 'left');
+  } else {
+    const targets = S.lv.stars, max = targets[2] * 1.1, total = S.score + S.tips;
+    const bx = 24, bw = 212, by = 112;
+    ctx.fillStyle = '#1a0b26'; rr(bx, by - 7, bw, 14, 7); ctx.fill();
+    ctx.fillStyle = '#ffd84a'; rr(bx, by - 7, Math.max(0, Math.min(1, total / max)) * bw, 14, 7); ctx.fill();
+    targets.forEach(tg => {
+      const mx = bx + tg / max * bw, on = total >= tg;
+      ctx.fillStyle = '#fff'; ctx.fillRect(mx - 1.5, by - 9, 3, 18);
+      txt('★', mx, by + 22, 20, on ? '#ffd84a' : '#8a6aa6');
+    });
+  }
+}
+
+function render() {
+  ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
+  drawBackground();
+  if (!S) { txt('PlayFeat!', W / 2, 260, 64, '#3b1d5a', 'center', 900); return; }
+  let hoverSlot = -1;
+  if (S.held && S.held.item.t === 'dish') { const si = slotAt(S.held); if (si >= 0 && S.seated[si]) hoverSlot = si; }
+  drawStations();
+  drawWindow(hoverSlot);
+  for (const b of S.bubbles) { drawBubble(b.x, b.y, b.ing); drawItem(makeItemView(b.ing), b.x, b.y, 0.85); }
+  for (const f of S.falling) drawItem(f.item, f.x, f.y, 1);
+  drawHUD();
+  // pause button (discreet)
+  const pb = L.pauseBtn;
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; rr(pb.x, pb.y, pb.w, pb.h, 10); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(pb.x + 16, pb.y + 14, 6, 20); ctx.fillRect(pb.x + 27, pb.y + 14, 6, 20);
+  // floats
+  for (const f of S.floats) {
+    ctx.globalAlpha = Math.max(0, 1 - f.age / 1.3);
+    if (f.text === '🗑') emoji(f.text, f.x, f.y - f.age * 40, f.size); else txt(f.text, f.x, f.y - f.age * 50, f.size, f.color, 'center', 900);
+    ctx.globalAlpha = 1;
+  }
+  // held item on top
+  if (S.held) {
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.4)'; ctx.shadowBlur = 12;
+    if (S.held.fromBubble) drawBubble(S.held.x, S.held.y, S.held.ing, 1.1);
+    drawItem(S.held.item, S.held.x, S.held.y, 1.1);
+    ctx.restore();
+  }
+}
+const viewCache = {};
+function makeItemView(ing) { return viewCache[ing] || (viewCache[ing] = ing === 'flatbread' ? { t: 'flatbread', st: 'raw' } : { t: ing }); }
+
+/* ====================================================================== */
+/* Main loop                                                               */
+/* ====================================================================== */
+let lastNow = performance.now(), acc = 0;
+function frame(now) {
+  const dt = Math.min(0.1, (now - lastNow) / 1000); lastNow = now;
+  if (S && !S.paused && !S.ended) {
+    acc += dt * SPEED; let n = 0;
+    while (acc >= STEP && n < 40 && !S.ended) { step(STEP); acc -= STEP; n++; }
+    if (n >= 40) acc = 0;
+  }
+  render();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ====================================================================== */
+/* Facilitator panel, pause, summary, export                               */
+/* ====================================================================== */
+const $ = id => document.getElementById(id);
+const LS_KEY = 'playfeat_runs_v1';
+let RUNS = [];
+function loadRuns() { try { const s = localStorage.getItem(LS_KEY); const a = s ? JSON.parse(s) : []; RUNS = Array.isArray(a) ? a : []; } catch (e) { RUNS = []; } }
+function saveRuns() { try { localStorage.setItem(LS_KEY, JSON.stringify(RUNS)); } catch (e) { console.warn('localStorage save failed', e); } }
+loadRuns();
+
+const LEVELS = ['1-1', '1-2', '1-3', '1-4', 'marathon'];
+let selLevel = '1-1';
+function renderLevelBtns() {
+  $('levelBtns').innerHTML = '';
+  for (const id of LEVELS) {
+    const b = document.createElement('button');
+    b.className = 'lv' + (id === selLevel ? ' sel' : '');
+    b.textContent = levelName(id); b.dataset.level = id;
+    b.onclick = () => { selLevel = id; renderLevelBtns(); };
+    $('levelBtns').appendChild(b);
+  }
+}
+function showPanel() {
+  $('summary').classList.add('hidden'); $('pauseOv').classList.add('hidden'); $('panel').classList.remove('hidden');
+  $('runsInfo').textContent = RUNS.length + ' run' + (RUNS.length === 1 ? '' : 's') + ' saved on this device';
+  renderLevelBtns();
+}
+$('startBtn').onclick = () => {
+  const tester = $('tester').value.trim();
+  try { localStorage.setItem('playfeat_last_tester', tester); } catch (_) {}
+  $('panel').classList.add('hidden');
+  activePointer = null; acc = 0; lastNow = performance.now();
+  startRun(selLevel, tester);
+};
+try { $('tester').value = localStorage.getItem('playfeat_last_tester') || ''; } catch (_) {}
+
+function pauseRun() { if (!S || S.ended) return; S.paused = true; log('paused'); $('pauseOv').classList.remove('hidden'); }
+$('resumeBtn').onclick = () => { if (!S) return; S.paused = false; log('resumed'); lastNow = performance.now(); $('pauseOv').classList.add('hidden'); };
+$('stopBtn').onclick = () => { if (!S) return; $('pauseOv').classList.add('hidden'); S.paused = false; endRun('stopped'); };
+
+function endRun(reason) {
+  if (S.ended) return;
+  S.ended = true; S.endReason = reason; S.held = null; activePointer = null;
+  log('run_end', { reason });
+  const rec = summarize();
+  S.record = rec;
+  RUNS.push(rec); saveRuns();
+  showSummary(rec);
+}
+
+function summarize() {
+  const total = S.score + S.tips;
+  const avg = a => a.length ? r1(a.reduce((x, y) => x + y, 0) / a.length) : null;
+  return {
+    id: S.id, startedAt: S.startedAt, tester: S.tester, level: S.levelId, levelName: levelName(S.levelId),
+    ended: S.endReason, runTimeSec: r1(S.t),
+    dishesServed: S.served, customersLost: S.lost, score: S.score, tips: S.tips, total,
+    stars: S.isM ? null : S.lv.stars.filter(x => total >= x).length,
+    starTargets: S.isM ? null : S.lv.stars.slice(),
+    stageReached: S.isM ? S.stage : null,
+    avgSecBetweenServes: S.served ? r1(S.serveTimes[S.served - 1] / S.served) : null,
+    avgWaitSec: avg(S.waits),
+    burntFlatbreads: S.burnt, bubblesMissed: S.missed, wrongDishes: S.wrong,
+    itemsDroppedVanished: S.vanished, itemsThrownAway: S.trashed,
+    orderSequence: S.orderSequence,
+    notes: '',
+    levelConfig: JSON.parse(JSON.stringify(S.lv)),
+    events: S.events,
+  };
+}
+
+const COLS = [
+  ['run_id', 'id'], ['started_at', 'startedAt'], ['tester', 'tester'], ['level', 'level'], ['ended', 'ended'],
+  ['run_time_s', 'runTimeSec'], ['dishes_served', 'dishesServed'], ['customers_lost', 'customersLost'],
+  ['score', 'score'], ['tips', 'tips'], ['total', 'total'], ['stars', 'stars'], ['stage_reached', 'stageReached'],
+  ['avg_s_between_serves', 'avgSecBetweenServes'], ['avg_wait_s', 'avgWaitSec'], ['burnt_flatbreads', 'burntFlatbreads'],
+  ['bubbles_missed', 'bubblesMissed'], ['wrong_dishes', 'wrongDishes'], ['items_dropped_vanished', 'itemsDroppedVanished'],
+  ['items_thrown_away', 'itemsThrownAway'], ['notes', 'notes'],
+];
+const cell = v => v == null ? '' : String(v);
+function tsvRow(rec) { return COLS.map(([, k]) => cell(rec[k]).replace(/[\t\r\n]+/g, ' ')).join('\t'); }
+function csvAll() {
+  const q = v => { const s = cell(v); return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  return [COLS.map(c => c[0]).join(','), ...RUNS.map(r => COLS.map(([, k]) => q(r[k])).join(','))].join('\r\n') + '\r\n';
+}
+function jsonAll() { return JSON.stringify({ exportedAt: new Date().toISOString(), config: CFG, runs: RUNS }, null, 2); }
+function stamp() { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`; }
+function download(name, text, mime) {
+  const url = URL.createObjectURL(new Blob([text], { type: mime }));
+  const a = document.createElement('a'); a.href = url; a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
+}
+function setStatus(s) { $('status').textContent = s; }
+document.querySelectorAll('.dlCsv').forEach(b => b.onclick = () => { download(`playfeat-runs-${stamp()}.csv`, csvAll(), 'text/csv'); setStatus('CSV: ' + RUNS.length + ' runs'); });
+document.querySelectorAll('.dlJson').forEach(b => b.onclick = () => { download(`playfeat-runs-${stamp()}.json`, jsonAll(), 'application/json'); setStatus('JSON: ' + RUNS.length + ' runs'); });
+
+async function copyText(text) {
+  try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; } } catch (_) {}
+  try {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand('copy'); ta.remove(); return ok;
+  } catch (_) { return false; }
+}
+$('copyRow').onclick = async () => {
+  const rec = currentRecord(); if (!rec) return;
+  const ok = await copyText(tsvRow(rec));
+  setStatus(ok ? 'Row copied (' + COLS.length + ' columns: ' + COLS.map(c => c[0]).join(', ') + ')' : 'Copy failed');
+};
+function currentRecord() { return S && S.record; }
+$('notes').addEventListener('input', () => { const rec = currentRecord(); if (rec) { rec.notes = $('notes').value; saveRuns(); } });
+$('backBtn').onclick = () => showPanel();
+
+function showSummary(rec) {
+  $('sumTitle').textContent = 'Run summary: ' + rec.levelName;
+  const rows = [
+    ['Level', rec.levelName], ['Tester', rec.tester || '-'], ['Ended', rec.ended], ['Run time (s)', rec.runTimeSec],
+    ['Dishes served', rec.dishesServed], ['Customers lost', rec.customersLost],
+    ['Score', rec.score], ['Tips', rec.tips], ['Total', rec.total],
+  ];
+  if (rec.stars != null) rows.push(['Stars (targets ' + rec.starTargets.join(' / ') + ')', rec.stars + ' / 3']);
+  if (rec.stageReached != null) rows.push(['Stage reached', rec.stageReached]);
+  rows.push(
+    ['Avg seconds between serves', rec.avgSecBetweenServes ?? '-'], ['Avg wait per customer (s)', rec.avgWaitSec ?? '-'],
+    ['Burnt flatbreads', rec.burntFlatbreads], ['Bubbles missed', rec.bubblesMissed], ['Wrong dishes refused', rec.wrongDishes],
+    ['Items dropped and vanished', rec.itemsDroppedVanished], ['Items thrown away', rec.itemsThrownAway],
+  );
+  const tr = rs => rs.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('');
+  const half = Math.ceil(rows.length / 2);
+  $('sumA').innerHTML = tr(rows.slice(0, half)); $('sumB').innerHTML = tr(rows.slice(half));
+  $('sumOrders').textContent = rec.orderSequence && rec.orderSequence.length ? 'Order sequence: ' + rec.orderSequence.join(', ') : '';
+  $('notes').value = rec.notes || '';
+  setStatus('');
+  $('summary').classList.remove('hidden');
+}
+function esc(v) { return String(v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+showPanel();
+
+// Test hook (used by the automated playthrough; not visible to testers)
+window.__pf = {
+  get S() { return S; }, L, CFG, get runs() { return RUNS; },
+  computeNeeded: () => computeNeeded(), tsvRow, COLS,
+  toClient(x, y) { const r = cv.getBoundingClientRect(); return { x: r.left + x * scale, y: r.top + y * scale }; },
+  grillSlotPos,
+};
+</script>
+</body>
+</html>
