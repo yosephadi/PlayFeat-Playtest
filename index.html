@@ -897,7 +897,7 @@ function drawWindow(hoverSlot) {
 function fmt(sec) { sec = Math.max(0, Math.floor(sec)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
 
 function drawHUD() {
-  ctx.fillStyle = 'rgba(40,15,60,0.85)'; rr(10, 10, 240, S.isM ? 92 : 146, 12); ctx.fill();
+  ctx.fillStyle = 'rgba(40,15,60,0.85)'; rr(10, 10, 290, S.isM ? 92 : 146, 12); ctx.fill();
   if (!S.isM) {
     const left = C.durationSec - S.t;
     if (left >= 0) {
@@ -909,13 +909,13 @@ function drawHUD() {
   }
   const y2 = S.isM ? 36 : 80;
   txt('Score ' + S.score, 24, y2, 22, '#fff', 'left');
-  txt('Tips ' + S.tips, 150, y2, 22, '#ffd84a', 'left');
+  txt('Tips ' + S.tips, 172, y2, 22, '#ffd84a', 'left');
   if (S.isM) {
     txt('Lost ' + S.lost + '/' + S.lv.maxLost, 24, 72, 22, '#ff9c9c', 'left');
-    txt('Served ' + S.served, 150, 72, 22, '#9cffb0', 'left');
+    txt('Served ' + S.served, 172, 72, 22, '#9cffb0', 'left');
   } else {
     const targets = S.lv.stars, max = targets[2] * 1.1, total = S.score + S.tips;
-    const bx = 24, bw = 212, by = 112;
+    const bx = 24, bw = 262, by = 112;
     ctx.fillStyle = '#1a0b26'; rr(bx, by - 7, bw, 14, 7); ctx.fill();
     ctx.fillStyle = '#ffd84a'; rr(bx, by - 7, Math.max(0, Math.min(1, total / max)) * bw, 14, 7); ctx.fill();
     targets.forEach(tg => {
