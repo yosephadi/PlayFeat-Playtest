@@ -32,11 +32,11 @@
   },
   "placement": {
     "_help": "What each station accepts. Keys = what is on the station now ('empty', or an item); values = items allowed on top. Items: flatbread:raw, flatbread:baked, flatbread:burnt, pepper, mushroom, sorbet, drizzle, dish:pepper, dish:mushroom, dish:sorbet. '*' = anything. A key '*' covers any occupied state (the new item then replaces the old one).",
-    "plate":   { "empty": ["flatbread:baked", "dish:pepper", "dish:mushroom"], "flatbread:baked": ["pepper", "mushroom"] },
-    "bowl":    { "empty": ["sorbet", "dish:sorbet"], "sorbet": ["drizzle"] },
+    "plate":   { "empty": ["flatbread:baked", "pepper", "mushroom"], "flatbread:baked": ["pepper", "mushroom"],
+                 "pepper": ["flatbread:baked"], "mushroom": ["flatbread:baked"] },
+    "bowl":    { "empty": ["sorbet"], "sorbet": ["drizzle"] },
     "grill":   { "empty": ["flatbread:raw", "flatbread:baked"], "*": ["flatbread:raw", "flatbread:baked"] },
-    "storage": { "empty": ["flatbread:raw", "flatbread:baked", "pepper", "mushroom", "sorbet", "drizzle", "dish:pepper", "dish:mushroom", "dish:sorbet"],
-                 "*":     ["flatbread:raw", "flatbread:baked", "pepper", "mushroom", "sorbet", "drizzle", "dish:pepper", "dish:mushroom", "dish:sorbet"] },
+    "storage": { "empty": ["*"], "*": ["*"] },
     "trash":   { "empty": ["*"] }
   },
   "layout": {
@@ -936,6 +936,15 @@ function step(dt) {
     const b = S.bubbles[i]; b.y += bv * dt;
     if (b.y - L.bubbleR > H) { S.bubbles.splice(i, 1); S.missed++; log('bubble_missed', { ing: b.ing, lane: b.lane + 1 }); }
   }
+  // Refused items hover through the feedback, then join the normal falling items.
+  const now = performance.now();
+  for (let i = S.hovering.length - 1; i >= 0; i--) {
+    const f = S.hovering[i];
+    if (now >= f.fallAt) {
+      S.hovering.splice(i, 1);
+      S.falling.push(f);
+    }
+  }
   // falling items
   const vmax = S.lv.gravity * C.fallSpeedKHPerGravity * H;
   for (let i = S.falling.length - 1; i >= 0; i--) {
@@ -1025,11 +1034,12 @@ function popOff(old, it, at, on) {
   log('item_replaced', { old: describe(old), by: describe(it), on });
 }
 
-// A refused item does not fall: it hovers where it was let go until touched again; the station shakes red.
+// Let the refusal feedback play before the item falls.
 function refuse(it, p, station) {
   S.wrongPlace++;
-  S.hovering.push({ item: it, x: p.x, y: p.y - 20, age: 0 });
-  S.shake = { station, until: performance.now() + 300 };
+  const until = performance.now() + 300;
+  S.hovering.push({ item: it, x: p.x, y: p.y - 20, age: 0, fallAt: until });
+  S.shake = { station, until };
   log('wrong_placement', { item: describe(it), station, level: S.levelId });
   SND.play('sfx_wrong_place');
 }
@@ -1050,6 +1060,7 @@ function drop(p) {
   if (si >= 0 && S.seated[si] && it.t === 'dish') { serve(S.seated[si], it); return; }
   // trash
   if (inPoly(p, L.trashPoly, 14)) {
+    if (!canPlace('trash', null, it)) return refuse(it, p, 'trash');
     S.trashed++; log('item_thrown_away', { item: describe(it) }); SND.play('sfx_trash');
     addFloat('\u{1F5D1}', L.trashC.x, L.trashC.y - 30, '#fff', 30);
     return;
@@ -1266,7 +1277,7 @@ function drawGrill(st) {
     drawItem(it, p.x, p.y, 1);
     let frac, col;
     if (it.st === 'raw') { frac = it.bake / C.bakeSec; col = '#fff36b'; }
-    else if (it.st === 'baked') { frac = it.over / C.burnAfterDoneSec; col = it.over >= C.glowAfterDoneSec ? '#ff2a00' : '#4cff6a'; }
+    else if (it.st === 'baked') { frac = it.over / C.burnAfterDoneSec; col = '#ff2a00'; }
     else { frac = 1; col = '#000'; }
     ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, 54, 40, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = col; ctx.beginPath(); ctx.ellipse(p.x, p.y, 54, 40, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, frac)); ctx.stroke();
@@ -1432,7 +1443,7 @@ function render() {
   if (!S) return;
   for (const b of S.bubbles) { drawGlassBubble(b.x, b.y, b.ing); drawItem(makeItemView(b.ing), b.x, b.y, 0.85); }
   for (const f of S.falling) drawItem(f.item, f.x, f.y, 1);
-  for (const f of S.hovering) {  // refused items float, bobbing gently, until picked up again
+  for (const f of S.hovering) {  // refused items bob briefly before falling
     const bob = Math.sin(performance.now() / 250 + f.x) * 4;
     ctx.fillStyle = 'rgba(30,10,60,0.25)'; ell(f.x, f.y + 34, 26, 7); ctx.fill();
     drawItem(f.item, f.x, f.y + bob, 1);

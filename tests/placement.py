@@ -1,4 +1,4 @@
-"""Every item x every station state: accepted items are placed, refused ones hover, and each refusal logs
+"""Every item x every station state: accepted items are placed, refused ones hover briefly and fall, and each refusal logs
 wrong_placement + plays sfx_wrong_place. Expected results are written out here from the rule (not read from CFG).
 Usage: placement.py"""
 import sys
@@ -12,19 +12,21 @@ ITEMS = {
     'dish:mushroom': "{t:'dish', dish:'mushroom'}", 'dish:sorbet': "{t:'dish', dish:'sorbet'}",
 }
 ALL = set(ITEMS)
-NOT_BURNT = ALL - {'flatbread:burnt'}
 # station, starting content, accepted items, JS that reads the station, expected content after a combo
 CASES = [
-    ('plate', None, {'flatbread:baked', 'dish:pepper', 'dish:mushroom'}),
+    ('plate', None, {'flatbread:baked', 'pepper', 'mushroom'}),
+    ('plate', 'pepper', {'flatbread:baked'}),
+    ('plate', 'mushroom', {'flatbread:baked'}),
     ('plate', 'flatbread:baked', {'pepper', 'mushroom'}),
     ('plate', 'dish:pepper', set()),
-    ('bowl', None, {'sorbet', 'dish:sorbet'}),
+    ('plate', 'dish:mushroom', set()),
+    ('bowl', None, {'sorbet'}),
     ('bowl', 'sorbet', {'drizzle'}),
     ('bowl', 'dish:sorbet', set()),
     ('grill', None, {'flatbread:raw', 'flatbread:baked'}),
     ('grill', 'flatbread:raw', {'flatbread:raw', 'flatbread:baked'}),   # full grill: new flatbread replaces (as before)
-    ('storage', None, NOT_BURNT),
-    ('storage', 'pepper', NOT_BURNT),                                   # occupied insert: replaces (as before)
+    ('storage', None, ALL),
+    ('storage', 'pepper', ALL),                                   # occupied insert: replaces (as before)
     ('trash', None, ALL),
 ]
 SLOT = {'plate': 'S.plates[0]', 'bowl': 'S.bowl', 'grill': 'S.grill[0]', 'storage': 'S.storage[0]', 'trash': 'null'}
@@ -52,13 +54,15 @@ with server() as port, sync_playwright() as p:
             n_ev, n_snd = g.ev(setup)
             g.drag(src, target[station])
             st = g.ev(f"""(() => {{ const S = window.__pf.S, k = {key_js};
-              return {{ slot: k({SLOT[station]}), hover: S.hovering.map(h => k(h.item)), falling: S.falling.map(f => k(f.item)),
+              return {{ slot: k({SLOT[station]}), held: k(S.held && S.held.item), hover: S.hovering.map(h => k(h.item)), falling: S.falling.map(f => k(f.item)),
                        ev: S.events.slice({n_ev}), snd: window.__pf.soundLog.slice({n_snd}).map(s => s.id), shake: S.shake && S.shake.station }}; }})()""")
             want_ok = item in accepted
             ev_names = [e['e'] for e in st['ev']]
             if want_ok:
-                expect_slot = None if station == 'trash' else COMBO.get((start, item), item)
-                ok = st['hover'] == [] and 'wrong_placement' not in ev_names and st['slot'] == expect_slot
+                expect_slot = None if station == 'trash' else item
+                if station in ('plate', 'bowl'):
+                    expect_slot = COMBO.get((start, item), COMBO.get((item, start), item))
+                ok = st['held'] is None and st['hover'] == [] and 'wrong_placement' not in ev_names and st['slot'] == expect_slot
                 if station == 'trash':
                     ok = ok and 'item_thrown_away' in ev_names
                 if start and station in ('grill', 'storage'):
@@ -67,11 +71,17 @@ with server() as port, sync_playwright() as p:
                 refusals += 1
                 wp = [e for e in st['ev'] if e['e'] == 'wrong_placement']
                 logged_item = item.replace(':', '(') + ')' if item.startswith('flatbread') else item  # describe() format
-                ok = st['hover'] == [item] and st['slot'] == start and len(wp) == 1 and wp[0]['item'] == logged_item \
+                ok = st['held'] is None and st['hover'] == [item] and not st['falling'] and st['slot'] == start and len(wp) == 1 and wp[0]['item'] == logged_item \
                     and wp[0]['station'] == STATION_NAME[station] and wp[0]['level'] == '1-3' and 't' in wp[0] \
                     and 'sfx_wrong_place' in st['snd'] and st['shake'] == STATION_NAME[station]
             results.append((station, start or 'empty', item, 'accept' if want_ok else 'refuse', ok))
             check(f'{station} [{start or "empty"}] + {item} -> {"placed" if want_ok else "refused"}', ok, st if not ok else '')
+            if (station, start, item) == ('plate', None, 'drizzle'):
+                g.page.wait_for_function("""() => {
+                    const S = window.__pf.S;
+                    return !S.hovering.length && S.falling.some(f => f.item.t === 'drizzle' && f.age > 0);
+                }""", timeout=1500)
+                check('refused drizzle falls after the feedback', True)
     # the summary counts wrong placements
     g.tap(K['pause']); g.page.wait_for_timeout(150); g.page.tap('#stopBtn'); g.page.wait_for_selector('#summary:not(.hidden)')
     rec = g.ev('window.__pf.S.record')
