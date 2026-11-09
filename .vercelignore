@@ -2,3 +2,5 @@ tools/
 tests/
 .git/
 *.log
+.env*
+.vercel/
