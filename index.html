@@ -30,6 +30,15 @@
     "tips": { "green": 5, "yellow": 2, "red": 0 },
     "angryTipMultiplier": 2
   },
+  "placement": {
+    "_help": "What each station accepts. Keys = what is on the station now ('empty', or an item); values = items allowed on top. Items: flatbread:raw, flatbread:baked, flatbread:burnt, pepper, mushroom, sorbet, drizzle, dish:pepper, dish:mushroom, dish:sorbet. '*' = anything. A key '*' covers any occupied state (the new item then replaces the old one).",
+    "plate":   { "empty": ["flatbread:baked", "dish:pepper", "dish:mushroom"], "flatbread:baked": ["pepper", "mushroom"] },
+    "bowl":    { "empty": ["sorbet", "dish:sorbet"], "sorbet": ["drizzle"] },
+    "grill":   { "empty": ["flatbread:raw", "flatbread:baked"], "*": ["flatbread:raw", "flatbread:baked"] },
+    "storage": { "empty": ["flatbread:raw", "flatbread:baked", "pepper", "mushroom", "sorbet", "drizzle", "dish:pepper", "dish:mushroom", "dish:sorbet"],
+                 "*":     ["flatbread:raw", "flatbread:baked", "pepper", "mushroom", "sorbet", "drizzle", "dish:pepper", "dish:mushroom", "dish:sorbet"] },
+    "trash":   { "empty": ["*"] }
+  },
   "layout": {
     "laneX": [280, 410, 540, 680],
     "glassBlurSamples": 22
@@ -292,6 +301,7 @@ const SOUND_CONFIG = {
   sfx_angry_arrive:    { file: 'audio/kenney/sci-fi-sounds/lowFrequency_explosion_001.m4a', volume: 0.6, plusSynth: 'hiss' },
   sfx_serve_ok:        { synth: 'chime_up', volume: 0.5 },
   sfx_wrong_dish:      { synth: 'bonk', volume: 0.55 },
+  sfx_wrong_place:     { synth: 'bonk_soft', volume: 0.45 },
   sfx_customer_leaves: { synth: 'blip_down', volume: 0.5 },
   sfx_time_warning:    { synth: 'tick_clock', volume: 0.4 },
   sfx_day_end:         { synth: 'bell', volume: 0.55 },
@@ -330,6 +340,7 @@ const SYNTH = (() => {
     fzzt(ctx, out, t) { noise(ctx, out, t, 0.45, 0.8, 'bandpass', 3000, 500, 1.4); tone(ctx, out, t, 'sawtooth', 110, 55, 0.4, 0.12); return 0.5; },
     hiss(ctx, out, t) { noise(ctx, out, t + 0.05, 0.75, 0.35, 'highpass', 3500, 2500, 0.7, 0.12); return 0.85; },
     chime_up(ctx, out, t) { notes(ctx, out, t, [1047, 1319, 1568], 'sine', 0.38, 0.45, 0.085); return 0.6; },
+    bonk_soft(ctx, out, t) { tone(ctx, out, t, 'sine', 330, 210, 0.15, 0.5); tone(ctx, out, t, 'triangle', 660, 420, 0.06, 0.08); return 0.17; },
     bonk(ctx, out, t) { tone(ctx, out, t, 'sine', 260, 150, 0.2, 0.6); tone(ctx, out, t, 'triangle', 520, 300, 0.08, 0.12); return 0.22; },
     blip_down(ctx, out, t) { tone(ctx, out, t, 'triangle', 820, 230, 0.3, 0.5); tone(ctx, out, t, 'square', 410, 115, 0.3, 0.06); return 0.32; },
     bell(ctx, out, t) {
@@ -664,7 +675,7 @@ function startRun(levelId, tester) {
     t: 0, paused: false, ended: false, endReason: null,
     score: 0, tips: 0, served: 0, lost: 0, burnt: 0, missed: 0, wrong: 0, vanished: 0, trashed: 0,
     events: [], seated: [], outside: [], schedule: [], schedIdx: 0, orderSequence: [],
-    bubbles: [], falling: [], held: null, floats: [],
+    bubbles: [], falling: [], hovering: [], held: null, floats: [], wrongPlace: 0, shake: null,
     grill: new Array(C.grillSlots).fill(null), plates: L.plates.map(() => null), bowl: null,
     storage: new Array(storageSlots).fill(null),
     starters: (lv.starterBubbles || []).slice().sort((a, b) => a.t - b.t), starterIdx: 0,
@@ -830,7 +841,7 @@ function computeNeeded() {
     else add(it.t);
   };
   if (S.held) addItem(S.held.item);
-  S.falling.forEach(f => addItem(f.item));
+  S.falling.forEach(f => addItem(f.item)); S.hovering.forEach(f => addItem(f.item));
   S.grill.forEach(addItem); S.plates.forEach(addItem); addItem(S.bowl); S.storage.forEach(addItem);
   S.bubbles.forEach(b => add(b.ing));
   const missing = [], any = [];
@@ -960,24 +971,19 @@ function grillSlotPos(i) {
 function slotAt(p) { for (let i = 0; i < L.slots.length; i++) if (inRect(p, L.slots[i])) return i; return -1; }
 function boxCenter(i) { const q = L.storage[i]; return { x: q.reduce((a, v) => a + Math.min(W - 12, v.x), 0) / q.length, y: q.reduce((a, v) => a + v.y, 0) / q.length }; }
 
-// Plate and bowl accept any single ingredient. The second item finishes the dish only when the pair is
-// that vessel's recipe (plate: flatbread dishes, bowl: sorbet) and any flatbread is baked; otherwise the
-// new item replaces the old one (see popOff in drop).
+// Placement rule: CFG.placement says what each station accepts (see the CONFIG at the top of the file).
+const itemKey = it => it.t === 'flatbread' ? 'flatbread:' + it.st : it.t === 'dish' ? 'dish:' + it.dish : it.t;
+function canPlace(station, cur, it) {
+  const r = (CFG.placement || {})[station] || {};
+  const list = (cur ? (r[itemKey(cur)] || r['*']) : r.empty) || [];
+  return list.includes('*') || list.includes(itemKey(it));
+}
+// Result of putting `it` on a plate/bowl holding `cur`: the item itself, or the dish the pair makes.
 function combine(kind, cur, it) {
-  const vesselBase = kind === 'plate' ? 'flatbread' : 'sorbet';
-  if (it.t === 'flatbread' && it.st === 'burnt') return null;
-  if (!cur) {
-    if (it.t === 'dish') return DISH[it.dish].base === vesselBase ? it : null;
-    return it;
-  }
-  if (cur.t === 'dish' || it.t === 'dish') return null;
+  if (!cur) return it;
   for (const [k, d] of Object.entries(DISH)) {
-    if (d.base !== vesselBase) continue;
     const pair = [cur, it];
-    const baseItem = pair.find(x => x.t === d.base), topItem = pair.find(x => x.t === d.topping);
-    if (!baseItem || !topItem) continue;
-    if (baseItem.t === 'flatbread' && baseItem.st !== 'baked') return null;
-    return { id: uid++, t: 'dish', dish: k };
+    if (pair.some(x => x.t === d.base) && pair.some(x => x.t === d.topping)) return { id: uid++, t: 'dish', dish: k };
   }
   return null;
 }
@@ -991,6 +997,8 @@ function pickupAt(p) {
   let best = -1, bd = 1e9;
   S.falling.forEach((f, i) => { const d = dist(p, f); if (d < L.itemR + 24 && d < bd) { bd = d; best = i; } });
   if (best >= 0) { const f = S.falling.splice(best, 1)[0]; log('item_caught_midair', { item: describe(f.item) }); return { item: f.item, fromBubble: false }; }
+  S.hovering.forEach((f, i) => { const d = dist(p, f); if (d < L.itemR + 24 && (best < 0 || d < bd)) { bd = d; best = i; } });
+  if (best >= 0) { const f = S.hovering.splice(best, 1)[0]; log('item_picked_up_hovering', { item: describe(f.item) }); return { item: f.item, fromBubble: false }; }
   const tryBubbles = () => {
     let bi = -1, bdd = 1e9;
     S.bubbles.forEach((b, i) => { const d = dist(p, b); if (d < L.bubbleR + 14 && d < bdd) { bdd = d; bi = i; } });
@@ -1017,6 +1025,22 @@ function popOff(old, it, at, on) {
   log('item_replaced', { old: describe(old), by: describe(it), on });
 }
 
+// A refused item does not fall: it hovers where it was let go until touched again; the station shakes red.
+function refuse(it, p, station) {
+  S.wrongPlace++;
+  S.hovering.push({ item: it, x: p.x, y: p.y - 20, age: 0 });
+  S.shake = { station, until: performance.now() + 300 };
+  log('wrong_placement', { item: describe(it), station, level: S.levelId });
+  SND.play('sfx_wrong_place');
+}
+function shakeOf(station) {
+  const sh = S && S.shake;
+  if (!sh || !(sh.station === station || (station === 'storage' && sh.station.startsWith('storage')))) return null;
+  const left = sh.until - performance.now();
+  if (left <= 0) return null;
+  return { dx: Math.sin(left / 18) * 7 * (left / 300), a: 0.45 * (left / 300), which: sh.station };
+}
+
 function drop(p) {
   const h = S.held; S.held = null;
   const it = h.item;
@@ -1031,32 +1055,35 @@ function drop(p) {
     return;
   }
   // grill
-  if (inPoly(p, L.grillPoly, 12) && it.t === 'flatbread' && it.st !== 'burnt') {
+  if (inPoly(p, L.grillPoly, 12)) {
     let gi = -1, gd = 1e9;
     S.grill.forEach((g, i) => { if (!g) { const d = dist(p, grillSlotPos(i)); if (d < gd) { gd = d; gi = i; } } });
-    if (gi >= 0) { S.grill[gi] = it; log('item_placed', { item: describe(it), on: 'grill' }); SND.play('sfx_place'); return; }
+    if (gi >= 0) {
+      if (!canPlace('grill', null, it)) return refuse(it, p, 'grill');
+      S.grill[gi] = it; log('item_placed', { item: describe(it), on: 'grill' }); SND.play('sfx_place'); return;
+    }
     S.grill.forEach((g, i) => { const d = dist(p, grillSlotPos(i)); if (gi < 0 || d < gd) { gd = d; gi = i; } });
+    if (!canPlace('grill', S.grill[gi], it)) return refuse(it, p, 'grill');
     const old = S.grill[gi]; S.grill[gi] = it; popOff(old, it, grillSlotPos(gi), 'grill'); SND.play('sfx_place'); return;
   }
   // plate / bowl
   for (const v of vessels()) {
     if (!inEll(p, v.e)) continue;
-    const cur = v.get(), res = combine(v.kind, cur, it);
+    const cur = v.get();
+    if (!canPlace(v.kind, cur, it)) return refuse(it, p, v.name);
+    const res = combine(v.kind, cur, it);
     if (res) {
       v.set(res); SND.play('sfx_place');
       if (cur) log('dish_assembled', { dish: res.dish, on: v.name });
       else log('item_placed', { item: describe(it), on: v.name });
-      return;
-    }
-    if (cur && combine(v.kind, null, it)) { v.set(it); popOff(cur, it, v.e, v.name); SND.play('sfx_place'); return; }
-    log('item_refused', { item: describe(it), on: v.name, holding: describe(cur) });
-    break;
+    } else { v.set(it); popOff(cur, it, v.e, v.name); SND.play('sfx_place'); }  // only if the table allows a non-recipe pair
+    return;
   }
   // storage
   for (let i = 0; i < S.storage.length && i < L.storage.length; i++) {
     if (!inPoly(p, L.storage[i], 14)) continue;
-    if (it.t === 'flatbread' && it.st === 'burnt') break;
     const old = S.storage[i];
+    if (!canPlace('storage', old, it)) return refuse(it, p, 'storage' + (i + 1));
     S.storage[i] = it; log('item_stored', { item: describe(it), slot: i + 1 }); SND.play('sfx_place');
     if (old) popOff(old, it, boxCenter(i), 'storage' + (i + 1));
     return;
@@ -1214,6 +1241,7 @@ function drawCounter() {
 }
 
 function drawGrill(st) {
+  const shk = shakeOf('grill'); ctx.save(); if (shk) ctx.translate(shk.dx, 0);
   ctx.fillStyle = 'rgba(40,10,80,0.25)'; poly(L.grillPoly.map(q => ({ x: q.x + 6, y: q.y + 8 }))); ctx.fill();
   ctx.fillStyle = '#e8262b'; poly(L.grillPoly); ctx.fill(); ctx.strokeStyle = '#9c1418'; ctx.lineWidth = 3; ctx.stroke();
   ctx.fillStyle = '#1d1a24'; poly(L.grillInner); ctx.fill();
@@ -1244,9 +1272,12 @@ function drawGrill(st) {
     ctx.strokeStyle = col; ctx.beginPath(); ctx.ellipse(p.x, p.y, 54, 40, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, frac)); ctx.stroke();
     if (it.st === 'baked' && it.over >= C.glowAfterDoneSec) txt('!', p.x + 50, p.y - 38, 34, '#fff');
   });
+  if (shk) { ctx.fillStyle = `rgba(255,40,40,${shk.a})`; poly(L.grillPoly); ctx.fill(); }
+  ctx.restore();
 }
 
 function drawVessels(st) {
+  const vs = shakeOf('plate') || shakeOf('bowl'); ctx.save(); if (vs) ctx.translate(vs.dx * 0.6, 0);
   const pl = L.plates[0];
   for (const e of L.plates) {
     ctx.fillStyle = 'rgba(40,10,80,0.25)'; ell(e.x + 5, e.y + 7, e.rx, e.ry); ctx.fill();
@@ -1260,6 +1291,11 @@ function drawVessels(st) {
   ctx.fillStyle = '#2c6aa6'; ell(b.x, b.y + 2, b.rx * 0.84, b.ry * 0.74); ctx.fill();
   st.plates.forEach((it, i) => { if (it && L.plates[i]) drawItem(it, L.plates[i].x, L.plates[i].y - 6, 1); });
   if (st.bowl) drawItem(st.bowl, b.x, b.y - 8, 1);
+  ctx.restore();
+  for (const [name, e] of [['plate', L.plates[0]], ['bowl', b]]) {
+    const shk = shakeOf(name);
+    if (shk) { ctx.fillStyle = `rgba(255,40,40,${shk.a})`; ell(e.x + shk.dx, e.y, e.rx + 6, e.ry + 6); ctx.fill(); }
+  }
   void pl;
 }
 
@@ -1278,6 +1314,8 @@ function drawStorage(st) {
     ctx.beginPath(); ctx.moveTo(rim[3].x, rim[3].y); ctx.lineTo(rim[2].x, rim[2].y); ctx.stroke();
   });
   st.storage.forEach((it, i) => { if (it && L.storage[i]) { const c = boxCenter(i); drawItem(it, c.x, c.y - 4, 0.8); } });
+  const shk = shakeOf('storage');
+  if (shk) { const q = L.storage[+shk.which.slice(7) - 1]; if (q) { ctx.fillStyle = `rgba(255,40,40,${shk.a})`; poly(q.map(v => ({ x: v.x + shk.dx, y: v.y }))); ctx.fill(); } }
 }
 
 function drawAlien(x, y, angry) {
@@ -1394,6 +1432,11 @@ function render() {
   if (!S) return;
   for (const b of S.bubbles) { drawGlassBubble(b.x, b.y, b.ing); drawItem(makeItemView(b.ing), b.x, b.y, 0.85); }
   for (const f of S.falling) drawItem(f.item, f.x, f.y, 1);
+  for (const f of S.hovering) {  // refused items float, bobbing gently, until picked up again
+    const bob = Math.sin(performance.now() / 250 + f.x) * 4;
+    ctx.fillStyle = 'rgba(30,10,60,0.25)'; ell(f.x, f.y + 34, 26, 7); ctx.fill();
+    drawItem(f.item, f.x, f.y + bob, 1);
+  }
   drawHUD();
   const pb = L.pauseBtn;
   ctx.fillStyle = 'rgba(255,255,255,0.18)'; rr(pb.x, pb.y, pb.w, pb.h, 10); ctx.fill();
@@ -1516,7 +1559,7 @@ function summarize() {
     stageReached: S.isM ? S.stage : null,
     avgSecBetweenServes: S.served ? r1(S.serveTimes[S.served - 1] / S.served) : null,
     avgWaitSec: avg(S.waits),
-    burntFlatbreads: S.burnt, bubblesMissed: S.missed, wrongDishes: S.wrong,
+    burntFlatbreads: S.burnt, bubblesMissed: S.missed, wrongDishes: S.wrong, wrongPlacements: S.wrongPlace,
     itemsDroppedVanished: S.vanished, itemsThrownAway: S.trashed,
     orderSequence: S.orderSequence,
     notes: '',
@@ -1530,7 +1573,7 @@ const COLS = [
   ['run_time_s', 'runTimeSec'], ['dishes_served', 'dishesServed'], ['customers_lost', 'customersLost'],
   ['score', 'score'], ['tips', 'tips'], ['total', 'total'], ['stars', 'stars'], ['stage_reached', 'stageReached'],
   ['avg_s_between_serves', 'avgSecBetweenServes'], ['avg_wait_s', 'avgWaitSec'], ['burnt_flatbreads', 'burntFlatbreads'],
-  ['bubbles_missed', 'bubblesMissed'], ['wrong_dishes', 'wrongDishes'], ['items_dropped_vanished', 'itemsDroppedVanished'],
+  ['bubbles_missed', 'bubblesMissed'], ['wrong_dishes', 'wrongDishes'], ['wrong_placements', 'wrongPlacements'], ['items_dropped_vanished', 'itemsDroppedVanished'],
   ['items_thrown_away', 'itemsThrownAway'], ['notes', 'notes'],
 ];
 const cell = v => v == null ? '' : String(v);
@@ -1580,7 +1623,7 @@ function showSummary(rec) {
   if (rec.stageReached != null) rows.push(['Stage reached', rec.stageReached]);
   rows.push(
     ['Avg seconds between serves', rec.avgSecBetweenServes ?? '-'], ['Avg wait per customer (s)', rec.avgWaitSec ?? '-'],
-    ['Burnt flatbreads', rec.burntFlatbreads], ['Bubbles missed', rec.bubblesMissed], ['Wrong dishes refused', rec.wrongDishes],
+    ['Burnt flatbreads', rec.burntFlatbreads], ['Bubbles missed', rec.bubblesMissed], ['Wrong dishes refused', rec.wrongDishes], ['Wrong placements', rec.wrongPlacements ?? 0],
     ['Items dropped and vanished', rec.itemsDroppedVanished], ['Items thrown away', rec.itemsThrownAway],
   );
   const tr = rs => rs.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('');
@@ -1600,7 +1643,7 @@ const SOUND_LABELS = {
   music_kitchen: 'Music, kitchen days + marathon', music_title: 'Music, start screen', sfx_button: 'Button tap', sfx_grab: 'Item picked up',
   sfx_bubble_pop: 'Bubble grabbed', sfx_place: 'Item placed', sfx_trash: 'Item thrown away', sfx_bake_loop: 'Baking (loop)',
   sfx_bake_ready: 'Flatbread ready', sfx_bake_warning: 'Burn warning tick', sfx_bake_burnt: 'Flatbread burnt', sfx_customer_arrive: 'Customer arrives',
-  sfx_angry_arrive: 'Angry alien arrives', sfx_serve_ok: 'Dish served', sfx_wrong_dish: 'Wrong dish', sfx_customer_leaves: 'Customer leaves (-10)',
+  sfx_angry_arrive: 'Angry alien arrives', sfx_serve_ok: 'Dish served', sfx_wrong_dish: 'Wrong dish', sfx_wrong_place: 'Wrong station (item refused)', sfx_customer_leaves: 'Customer leaves (-10)',
   sfx_time_warning: 'Last 10 s tick', sfx_day_end: 'Day ends', sfx_star_1: 'Star 1', sfx_star_2: 'Star 2', sfx_star_3: 'Star 3', sfx_run_over: 'Marathon over',
 };
 const CREDITS = [

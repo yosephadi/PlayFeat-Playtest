@@ -26,23 +26,22 @@
   const wantedTop = new Set(flatNeeds.map(o => o === 'pepper' ? 'pepper' : 'mushroom'));
   const bub = pred => S.bubbles.filter(b => vis(b) && pred(b.ing)).sort((a, b) => b.y - a.y)[0];
   const stIdx = pred => S.storage.findIndex(x => x && pred(x));
-  if (g && g.st === 'baked' && (!plate || (wantedTop.has(plate.t)))) return { from: K.grill, to: K.plate, label: plate ? 'grill->plate topping (dish)' : 'grill->plate' };
+  if (g && g.st === 'baked' && !plate) return { from: K.grill, to: K.plate, label: 'grill->plate' };
   if (g && g.st === 'baked' && freeSt >= 0 && plate) return { from: K.grill, to: K.storage[freeSt], label: 'grill->storage' };
   if (plate && plate.t === 'flatbread' && plate.st === 'baked' && wantedTop.size) {
     const si = stIdx(x => wantedTop.has(x.t)); if (si >= 0) return { from: K.storage[si], to: K.plate, label: 'storage topping->plate' };
     const b = bub(k => wantedTop.has(k)); if (b) return { from: b, to: K.plate, label: 'bubble ' + b.ing + '->plate' };
   }
-  if (plate && wantedTop.has(plate.t)) { const si = stIdx(x => x.t === 'flatbread' && x.st === 'baked'); if (si >= 0) return { from: K.storage[si], to: K.plate, label: 'storage flatbread->plate topping (dish)' }; }
-  if (!plate && g && wantedTop.size) { const b = bub(k => wantedTop.has(k)); if (b) return { from: b, to: K.plate, label: 'bubble topping->empty plate' }; }
+  if (!plate) { const si = stIdx(x => x.t === 'flatbread' && x.st === 'baked'); if (si >= 0) return { from: K.storage[si], to: K.plate, label: 'storage flatbread->plate' }; }
   if (sorbNeeds.length) {
-    if (S.bowl && (S.bowl.t === 'sorbet' || S.bowl.t === 'drizzle')) {
-      const want = S.bowl.t === 'sorbet' ? 'drizzle' : 'sorbet';
+    if (S.bowl && S.bowl.t === 'sorbet') {
+      const want = 'drizzle';
       const si = stIdx(x => x.t === want); if (si >= 0) return { from: K.storage[si], to: K.bowl, label: 'storage ' + want + '->bowl' };
       const b = bub(k => k === want); if (b) return { from: b, to: K.bowl, label: 'bubble ' + want + '->bowl (dish)' };
     }
     if (!S.bowl) {
-      const si = stIdx(x => x.t === 'sorbet' || x.t === 'drizzle'); if (si >= 0) return { from: K.storage[si], to: K.bowl, label: 'storage->bowl' };
-      const b = bub(k => k === 'sorbet' || k === 'drizzle'); if (b) return { from: b, to: K.bowl, label: 'bubble ' + b.ing + '->bowl' };
+      const si = stIdx(x => x.t === 'sorbet'); if (si >= 0) return { from: K.storage[si], to: K.bowl, label: 'storage sorbet->bowl' };
+      const b = bub(k => k === 'sorbet'); if (b) return { from: b, to: K.bowl, label: 'bubble sorbet->bowl' };
     }
   }
   const flatInPlay = (g && g.st !== 'burnt' ? 1 : 0) + (plate && plate.t === 'flatbread' ? 1 : 0) + S.storage.filter(x => x && x.t === 'flatbread' && x.st !== 'burnt').length;
