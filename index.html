@@ -194,6 +194,20 @@
   td:first-child { color: #c9b3df; }
   td:last-child { font-weight: 700; font-variant-numeric: tabular-nums; }
   #status { min-height: 22px; }
+  .snd input[type=range] { flex: 0 1 150px; min-width: 110px; padding: 0; border: 0; background: transparent; accent-color: #ff8a3c; }
+  button.off { background: #5a4a6a; color: #c9b3df; }
+  .card.wide { max-width: 980px; }
+  #sndTable { font-size: 15px; }
+  #sndTable td { vertical-align: top; padding: 6px; }
+  #sndTable td:last-child { font-weight: 400; }
+  #sndTable .cur { color: #ffd84a; font-size: 13px; max-width: 200px; word-break: break-all; }
+  #sndTable select { font-size: 15px; max-width: 230px; padding: 6px; border-radius: 8px; background: #1a0b26; color: #fff; border: 2px solid #7d45b0; }
+  #sndTable .btns { white-space: nowrap; }
+  #sndTable .btns button { margin: 0 4px 4px 0; }
+  .loopin input { width: 82px; min-width: 0; font-size: 14px; padding: 4px; }
+  #sndExportText { height: 220px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+  .credit { margin: 10px 0; line-height: 1.4; }
+  .credit a { color: #ffb36b; word-break: break-all; }
   #recent { font-size: 15px; margin-top: 4px; }
   #recent td { padding: 3px 6px; }
   #recent td:first-child { color: #c9b3df; }
@@ -209,11 +223,29 @@
   <div class="row"><label for="tester">Tester</label><input id="tester" placeholder="name or ID" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
   <div class="row" id="levelBtns"></div>
   <div class="row"><button id="startBtn" class="big">Start</button></div>
+  <div class="row snd"><span class="muted">Music</span><input type="range" id="volMusic" min="0" max="1" step="0.05"><span class="muted">Effects</span><input type="range" id="volSfx" min="0" max="1" step="0.05"><button id="muteBtn" class="small">Sound on</button><button id="soundTestBtn" class="small">Sound test</button><button id="creditsBtn" class="small">Credits</button></div>
   <div class="row muted" id="runsInfo"></div>
   <table id="recent"></table>
   <div class="row"><span class="muted">Download all runs:</span>
     <button class="small dlCsv">CSV</button><button class="small dlJson">JSON</button></div>
   <div class="row warn hidden" id="saveWarn">Runs could not be saved on this device. Download them before closing this page.</div>
+</div></div>
+
+<!-- Sound test -->
+<div id="soundTest" class="ov hidden"><div class="card wide">
+  <h2>Sound test</h2>
+  <div class="muted">Tap ▶ Play to hear a sound. Pick another file in the list to swap it right away (saved on this device). Music: "Seam" jumps to 4 s before the loop point so you can hear the loop.</div>
+  <table id="sndTable"></table>
+  <div class="row"><button id="sndExport">Export sound config</button><button id="sndStop" class="small">Stop music</button><button id="sndReset" class="small">Reset to defaults</button><button id="sndBack">Back to panel</button></div>
+  <div class="row muted" id="sndStatus"></div>
+  <textarea id="sndExportText" class="hidden" readonly></textarea>
+</div></div>
+
+<!-- Credits -->
+<div id="creditsOv" class="ov hidden"><div class="card">
+  <h2>Credits</h2>
+  <div id="creditsBody"></div>
+  <div class="row"><button id="creditsBack">Back to panel</button></div>
 </div></div>
 
 <!-- Pause -->
@@ -238,6 +270,280 @@
 
 <script>
 'use strict';
+/* ====================================================================== */
+/* SOUND CONFIG — one line per sound. To swap a file, change `file`.       */
+/* To use a code-made sound instead, set `synth: '<recipe>'` (and no file).*/
+/* volume 0..1 (multiplied by the Music / Effects sliders).                 */
+/* Music loops between loopStart and loopEnd (seconds) with no gap.        */
+/* ====================================================================== */
+const SOUND_CONFIG = {
+  music_kitchen:       { file: 'audio/music/shake_and_bake.m4a', volume: 1.0, bus: 'music', loop: true, loopStart: 27.4207, loopEnd: 102.4207 },
+  music_title:         { file: 'audio/music/outer_space_loop.m4a', volume: 1.0, bus: 'music', loop: true, loopStart: 0, loopEnd: 68.56 },
+  sfx_button:          { file: 'audio/kenney/interface-sounds/click_001.m4a', volume: 0.5 },
+  sfx_grab:            { file: 'audio/kenney/digital-audio/pepSound3.m4a', volume: 0.3 },
+  sfx_bubble_pop:      { file: 'audio/kenney/interface-sounds/pluck_001.m4a', volume: 0.55 },
+  sfx_place:           { file: 'audio/mixkit/bowl_placed.m4a', volume: 0.6 },
+  sfx_trash:           { file: 'audio/kenney/interface-sounds/scratch_004.m4a', volume: 0.6 },
+  sfx_bake_loop:       { file: 'audio/mixkit/frying_eggs_loop.m4a', volume: 0.22, loop: true },
+  sfx_bake_ready:      { file: 'audio/mixkit/oven_ding.m4a', volume: 0.7 },
+  sfx_bake_warning:    { synth: 'tick', volume: 0.35 },
+  sfx_bake_burnt:      { synth: 'fzzt', volume: 0.55 },
+  sfx_customer_arrive: { file: 'audio/kenney/digital-audio/twoTone1.m4a', volume: 0.4, pitchJitter: 0.07 },
+  sfx_angry_arrive:    { file: 'audio/kenney/sci-fi-sounds/lowFrequency_explosion_001.m4a', volume: 0.6, plusSynth: 'hiss' },
+  sfx_serve_ok:        { synth: 'chime_up', volume: 0.5 },
+  sfx_wrong_dish:      { synth: 'bonk', volume: 0.55 },
+  sfx_customer_leaves: { synth: 'blip_down', volume: 0.5 },
+  sfx_time_warning:    { synth: 'tick_clock', volume: 0.4 },
+  sfx_day_end:         { synth: 'bell', volume: 0.55 },
+  sfx_star_1:          { synth: 'star1', volume: 0.5 },
+  sfx_star_2:          { synth: 'star2', volume: 0.5 },
+  sfx_star_3:          { synth: 'star3', volume: 0.6 },
+  sfx_run_over:        { synth: 'fall3', volume: 0.5 },
+};
+const SOUND_DEFAULTS = JSON.parse(JSON.stringify(SOUND_CONFIG));
+
+/* Code-made sounds (Web Audio). Each recipe plays at time t into `out` and returns its length in seconds. */
+const SYNTH = (() => {
+  function tone(ctx, out, t, type, f0, f1, dur, peak, attack) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t);
+    if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + dur);
+    const a = attack || 0.004;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + dur + 0.03);
+  }
+  function noise(ctx, out, t, dur, peak, ftype, f0, f1, q, attack) {
+    const s = ctx.createBufferSource(); s.buffer = SND.noiseBuffer(); s.loop = true;
+    const f = ctx.createBiquadFilter(); f.type = ftype; f.Q.value = q || 1;
+    f.frequency.setValueAtTime(f0, t); if (f1 && f1 !== f0) f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    const g = ctx.createGain(), a = attack || 0.005;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(out); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.03);
+  }
+  const notes = (ctx, out, t, list, type, dur, peak, step) => list.forEach((f, i) => {
+    tone(ctx, out, t + i * step, type, f, f, dur, peak); tone(ctx, out, t + i * step, 'sine', f * 2, f * 2, dur * 0.5, peak * 0.2);
+  });
+  return {
+    tick(ctx, out, t) { tone(ctx, out, t, 'square', 2000, 1700, 0.025, 0.22); return 0.04; },
+    tick_clock(ctx, out, t) { tone(ctx, out, t, 'sine', 1000, 1000, 0.07, 0.5); tone(ctx, out, t, 'sine', 2000, 2000, 0.03, 0.12); return 0.08; },
+    fzzt(ctx, out, t) { noise(ctx, out, t, 0.45, 0.8, 'bandpass', 3000, 500, 1.4); tone(ctx, out, t, 'sawtooth', 110, 55, 0.4, 0.12); return 0.5; },
+    hiss(ctx, out, t) { noise(ctx, out, t + 0.05, 0.75, 0.35, 'highpass', 3500, 2500, 0.7, 0.12); return 0.85; },
+    chime_up(ctx, out, t) { notes(ctx, out, t, [1047, 1319, 1568], 'sine', 0.38, 0.45, 0.085); return 0.6; },
+    bonk(ctx, out, t) { tone(ctx, out, t, 'sine', 260, 150, 0.2, 0.6); tone(ctx, out, t, 'triangle', 520, 300, 0.08, 0.12); return 0.22; },
+    blip_down(ctx, out, t) { tone(ctx, out, t, 'triangle', 820, 230, 0.3, 0.5); tone(ctx, out, t, 'square', 410, 115, 0.3, 0.06); return 0.32; },
+    bell(ctx, out, t) {
+      [[880, 1, 1.6], [1760, 0.5, 1.1], [2430, 0.32, 0.8], [3520, 0.18, 0.5], [4750, 0.1, 0.35]].forEach(([f, a, d]) => tone(ctx, out, t, 'sine', f, f, d, 0.5 * a, 0.003));
+      return 1.6;
+    },
+    star1(ctx, out, t) { notes(ctx, out, t, [784], 'sine', 0.32, 0.5, 0); tone(ctx, out, t + 0.04, 'sine', 2350, 2350, 0.12, 0.08); return 0.35; },
+    star2(ctx, out, t) { notes(ctx, out, t, [988], 'sine', 0.34, 0.5, 0); tone(ctx, out, t + 0.04, 'sine', 2960, 2960, 0.12, 0.09); return 0.36; },
+    star3(ctx, out, t) {
+      notes(ctx, out, t, [1175, 1480, 1760], 'sine', 0.75, 0.32, 0.0);
+      for (let k = 0; k < 4; k++) tone(ctx, out, t + 0.05 + k * 0.06, 'sine', 2350 + k * 400, 2350 + k * 400, 0.12, 0.07);
+      return 0.8;
+    },
+    fall3(ctx, out, t) { notes(ctx, out, t, [659, 523], 'triangle', 0.3, 0.5, 0.2); notes(ctx, out, t + 0.4, [392], 'triangle', 0.7, 0.5, 0); return 1.1; },
+    ding(ctx, out, t) { tone(ctx, out, t, 'sine', 1568, 1568, 0.9, 0.5, 0.002); tone(ctx, out, t, 'sine', 3136, 3136, 0.3, 0.15, 0.002); return 0.9; },
+    pop(ctx, out, t) { tone(ctx, out, t, 'sine', 950, 320, 0.07, 0.6); noise(ctx, out, t, 0.03, 0.2, 'bandpass', 2500, 2500, 1); return 0.08; },
+    thunk(ctx, out, t) { tone(ctx, out, t, 'sine', 190, 90, 0.13, 0.7); noise(ctx, out, t, 0.05, 0.25, 'lowpass', 900, 900, 0.7); return 0.14; },
+    whoosh(ctx, out, t) { noise(ctx, out, t, 0.32, 0.5, 'bandpass', 400, 3000, 1.2, 0.12); return 0.34; },
+    blip(ctx, out, t) { tone(ctx, out, t, 'square', 880, 1320, 0.08, 0.2); return 0.1; },
+    sizzle(ctx, out, t, opts) {
+      // looping filtered noise with a gentle flutter; returns a handle when opts.loop
+      const s = ctx.createBufferSource(); s.buffer = SND.noiseBuffer(); s.loop = true;
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 5200; bp.Q.value = 0.5;
+      const g = ctx.createGain(); g.gain.value = 0.35;
+      const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 7; lg.gain.value = 0.12; lfo.connect(lg); lg.connect(g.gain);
+      s.connect(hp); hp.connect(bp); bp.connect(g); g.connect(out); s.start(t); lfo.start(t);
+      const stop = (when) => { try { s.stop(when); lfo.stop(when); } catch (_) {} };
+      if (opts && opts.loop) return { stop };
+      stop(t + 1.5); return 1.5;
+    },
+  };
+})();
+
+/* Sound engine: Web Audio with decoded buffers. Never throws into the game; with no audio it only logs. */
+const SND = (() => {
+  const LS = 'playfeat_audio_v1';
+  const st = { ctx: null, master: null, bus: {}, buf: {}, loading: {}, voices: {}, music: null, musicId: null, wantMusic: null,
+    noise: null, manifest: null, settings: { music: 0.35, sfx: 0.9, muted: false } };
+  const soundLog = [];
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS) || 'null');
+    if (saved && typeof saved === 'object') {
+      Object.assign(st.settings, saved.settings || {});
+      for (const [id, o] of Object.entries(saved.overrides || {})) if (SOUND_CONFIG[id]) Object.assign(SOUND_CONFIG[id], o);
+    }
+  } catch (_) {}
+  function save() {
+    try {
+      const overrides = {};
+      for (const id of Object.keys(SOUND_CONFIG)) {
+        const a = SOUND_CONFIG[id], d = SOUND_DEFAULTS[id], diff = {};
+        for (const k of new Set([...Object.keys(a), ...Object.keys(d)])) if (JSON.stringify(a[k]) !== JSON.stringify(d[k])) diff[k] = a[k] === undefined ? null : a[k];
+        if (Object.keys(diff).length) overrides[id] = diff;
+      }
+      localStorage.setItem(LS, JSON.stringify({ settings: st.settings, overrides }));
+    } catch (_) {}
+  }
+  function gameTime() { try { return S ? Math.round(S.t * 100) / 100 : null; } catch (_) { return null; } }
+  function log(id, note) {
+    const t = gameTime();
+    soundLog.push({ id, t, note: note || '' });
+    if (soundLog.length > 5000) soundLog.shift();
+    console.debug(`[sfx] ${id} t=${t == null ? '-' : t}${note ? ' ' + note : ''}`);
+  }
+  function apply() {
+    if (!st.ctx) return;
+    st.master.gain.value = st.settings.muted ? 0 : 1;
+    st.bus.music.gain.value = st.settings.music * (st.ducked ? 0.35 : 1);
+    st.bus.sfx.gain.value = st.settings.sfx;
+  }
+  function noiseBuffer() {
+    if (!st.noise && st.ctx) {
+      const n = st.ctx.createBuffer(1, st.ctx.sampleRate, st.ctx.sampleRate), d = n.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      st.noise = n;
+    }
+    return st.noise;
+  }
+  function load(file) {
+    if (!st.ctx || !file) return Promise.reject(new Error('no audio'));
+    if (st.buf[file]) return Promise.resolve(st.buf[file]);
+    if (!st.loading[file]) {
+      st.loading[file] = fetch(file).then(r => { if (!r.ok) throw new Error(r.status + ' ' + file); return r.arrayBuffer(); })
+        .then(ab => new Promise((res, rej) => st.ctx.decodeAudioData(ab, res, rej)))
+        .then(b => { st.buf[file] = b; return b; })
+        .catch(e => { if (!st.leaving) console.warn('sound load failed', file, e && e.message); delete st.loading[file]; throw e; });
+    }
+    return st.loading[file];
+  }
+  function unlock() {
+    if (st.ctx) { if (st.ctx.state !== 'running' && st.ctx.resume) st.ctx.resume().catch(() => {}); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    try {
+      const ctx = new AC();
+      st.ctx = ctx;
+      st.master = ctx.createGain();
+      const comp = ctx.createDynamicsCompressor();
+      st.master.connect(comp); comp.connect(ctx.destination);
+      for (const b of ['music', 'sfx']) { st.bus[b] = ctx.createGain(); st.bus[b].connect(st.master); }
+      apply();
+      const s = ctx.createBufferSource(); s.buffer = ctx.createBuffer(1, 1, 22050); s.connect(ctx.destination); s.start(0);
+      if (ctx.resume) ctx.resume().catch(() => {});
+      for (const id of Object.keys(SOUND_CONFIG)) if (SOUND_CONFIG[id].file) load(SOUND_CONFIG[id].file).catch(() => {});
+      if (st.wantMusic) { const w = st.wantMusic; st.wantMusic = null; music(w); }
+    } catch (e) { console.warn('audio unavailable', e); st.ctx = null; }
+  }
+  ['pointerup', 'touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, unlock, { capture: true, passive: true }));
+  window.addEventListener('pagehide', () => { st.leaving = true; });  // fetches cancelled by leaving the page are not errors
+
+  function addVoice(id, v) {
+    const now = st.ctx.currentTime;
+    const a = (st.voices[id] = (st.voices[id] || []).filter(x => x.end > now));
+    while (a.length >= 2) { const o = a.shift(); try { o.stop(); } catch (_) {} }  // max 2 copies of one effect
+    a.push(v);
+  }
+  function outFor(cfg) {
+    const g = st.ctx.createGain(); g.gain.value = cfg.volume == null ? 1 : cfg.volume; g.connect(st.bus[cfg.bus || 'sfx']); return g;
+  }
+  function play(id, opts) {
+    opts = opts || {};
+    const cfg = SOUND_CONFIG[id];
+    log(id, opts.note);
+    if (!cfg || !st.ctx) return;
+    try {
+      const ctx = st.ctx, t0 = ctx.currentTime + 0.005, g = outFor(cfg);
+      let end = t0 + 1, stop = () => { try { g.disconnect(); } catch (_) {} };
+      if (cfg.synth) {
+        const r = SYNTH[cfg.synth] ? SYNTH[cfg.synth](ctx, g, t0, {}) : 0.2;
+        end = t0 + (typeof r === 'number' ? r : 1);
+      } else if (cfg.file) {
+        const b = st.buf[cfg.file];
+        if (!b) { load(cfg.file).catch(() => {}); return; }
+        const s = ctx.createBufferSource(); s.buffer = b;
+        const j = cfg.pitchJitter ? (opts.jitter == null ? Math.random() * 2 - 1 : opts.jitter) * cfg.pitchJitter : 0;
+        s.playbackRate.value = (opts.rate || 1) * (1 + j);
+        s.connect(g); s.start(t0);
+        if (cfg.loop) { s.stop(t0 + Math.min(2.5, b.duration * 2)); }   // a one-off play of a loop sound (sound test)
+        end = t0 + b.duration / s.playbackRate.value;
+        stop = () => { try { s.stop(); } catch (_) {} };
+      }
+      if (cfg.plusSynth && SYNTH[cfg.plusSynth]) SYNTH[cfg.plusSynth](ctx, g, t0, {});
+      addVoice(id, { end, stop });
+    } catch (e) { console.warn('sound play failed', id, e); }
+  }
+  function startLoop(id) {
+    log(id, 'loop start');
+    const handle = { stop() { log(id, 'loop stop'); } };
+    const cfg = SOUND_CONFIG[id];
+    if (!cfg || !st.ctx) return handle;
+    try {
+      const ctx = st.ctx, t0 = ctx.currentTime + 0.01, g = outFor(cfg), v = g.gain.value;
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, v), t0 + 0.15);
+      let stopSrc = () => {};
+      if (cfg.synth && SYNTH[cfg.synth]) {
+        const r = SYNTH[cfg.synth](ctx, g, t0, { loop: true });
+        if (r && r.stop) stopSrc = r.stop;
+      } else if (cfg.file) {
+        const startWith = (b) => {
+          if (handle.stopped) return;
+          const s = ctx.createBufferSource(); s.buffer = b; s.loop = true;
+          if (cfg.loopEnd) { s.loopStart = cfg.loopStart || 0; s.loopEnd = Math.min(cfg.loopEnd, b.duration); }
+          s.connect(g); s.start(ctx.currentTime + 0.01);
+          stopSrc = (when) => { try { s.stop(when); } catch (_) {} };
+        };
+        if (st.buf[cfg.file]) startWith(st.buf[cfg.file]); else load(cfg.file).then(startWith).catch(() => {});
+      }
+      handle.stop = () => {
+        if (handle.stopped) return; handle.stopped = true; log(id, 'loop stop');
+        const t = ctx.currentTime;
+        try { g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(Math.max(0.0002, g.gain.value), t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15); } catch (_) {}
+        stopSrc(t + 0.2);
+      };
+    } catch (e) { console.warn('loop failed', id, e); }
+    return handle;
+  }
+  function stopMusic(fade) {
+    const m = st.music; st.music = null;
+    if (!m || !st.ctx) return;
+    const t = st.ctx.currentTime, f = fade == null ? 0.6 : fade;
+    try { m.g.gain.cancelScheduledValues(t); m.g.gain.setValueAtTime(m.g.gain.value, t); m.g.gain.linearRampToValueAtTime(0, t + f); m.s.stop(t + f + 0.05); } catch (_) {}
+  }
+  function music(id, offset) {
+    if (id && st.musicId === id && st.music && offset == null) return;
+    stopMusic();
+    st.musicId = id || null;
+    if (!id) return;
+    log(id, offset != null ? 'music from ' + offset.toFixed(1) + 's' : 'music');
+    if (!st.ctx) { st.wantMusic = id; st.musicId = null; return; }
+    const cfg = SOUND_CONFIG[id];
+    if (!cfg || !cfg.file) return;
+    const startWith = (b) => {
+      if (st.musicId !== id) return;
+      const ctx = st.ctx, s = ctx.createBufferSource(), g = ctx.createGain();
+      s.buffer = b; s.loop = cfg.loop !== false;
+      if (s.loop) { s.loopStart = cfg.loopStart || 0; s.loopEnd = Math.min(cfg.loopEnd || b.duration, b.duration); }
+      const v = cfg.volume == null ? 1 : cfg.volume;
+      g.gain.setValueAtTime(0, ctx.currentTime); g.gain.linearRampToValueAtTime(v, ctx.currentTime + (offset != null ? 0.05 : 0.8));
+      s.connect(g); g.connect(st.bus.music); s.start(ctx.currentTime + 0.02, Math.max(0, offset || 0));
+      st.music = { s, g };
+    };
+    if (st.buf[cfg.file]) startWith(st.buf[cfg.file]); else load(cfg.file).then(startWith).catch(() => {});
+  }
+  function duck(on) { st.ducked = !!on; apply(); }
+  function setSetting(k, v) { st.settings[k] = v; apply(); save(); }
+  function loadManifest() {
+    if (st.manifest) return Promise.resolve(st.manifest);
+    return fetch('audio/manifest.json').then(r => r.json()).then(m => (st.manifest = m)).catch(() => (st.manifest = []));
+  }
+  return { play, startLoop, music, stopMusic, duck, unlock, load, save, setSetting, loadManifest, noiseBuffer,
+    get settings() { return st.settings; }, get ctx() { return st.ctx; }, get musicId() { return st.musicId; }, soundLog, log };
+})();
+
 /* ====================================================================== */
 /* Setup                                                                   */
 /* ====================================================================== */
@@ -437,6 +743,7 @@ function seatCustomers() {
     c.seatedT = S.t; c.left = c.patienceMax;
     S.seated.push(c);
     log('customer_seated', { cid: c.id, waitedOutside: r2(S.t - c.arrivalT) });
+    SND.play(c.type === 'angry' ? 'sfx_angry_arrive' : 'sfx_customer_arrive', { jitter: ((c.id * 37) % 11) / 5 - 1 });
   }
 }
 
@@ -455,12 +762,14 @@ function serve(c, it) {
   if (it.t !== 'dish' || it.dish !== c.order) {
     S.wrong++;
     log('wrong_dish_refused', { cid: c.id, dish: describe(it), wanted: c.order });
+    SND.play('sfx_wrong_dish');
     addFloat('✗', sc.x, sc.y, '#ff4f4f', 44);
     return;
   }
   const pts = dishPoints(c.order), tip = liveTip(c), wait = S.t - c.seatedT;
   S.score += pts; S.tips += tip; S.served++;
   S.waits.push(wait); S.serveTimes.push(S.t);
+  SND.play('sfx_serve_ok');
   log('dish_served', { cid: c.id, dish: c.order, angry: c.type === 'angry', points: pts, tip,
     waitSec: r2(wait), patienceLeftSec: r2(c.left), patienceLeftPct: Math.round(100 * c.left / c.patienceMax), zone: zone(c) });
   S.seated.splice(i, 1);
@@ -475,6 +784,7 @@ function loseCustomer(c) {
   S.lost++;
   const before = S.score;
   S.score = Math.max(0, S.score - C.lostPenalty);
+  SND.play('sfx_customer_leaves');
   log('customer_lost', { cid: c.id, order: c.order, type: c.type, pointsLost: before - S.score });
   addFloat('-' + C.lostPenalty, sc.x, sc.y, '#ff4f4f', 48);
   if (S.isM && S.lost >= S.lv.maxLost) endRun('lost ' + S.lv.maxLost);
@@ -571,6 +881,10 @@ function spawnRandom() {
 /* ====================================================================== */
 function step(dt) {
   S.t += dt;
+  if (!S.isM) { // one tick per second in the last seconds of a story day
+    const kb = Math.ceil(C.durationSec - (S.t - dt)), ka = Math.ceil(C.durationSec - S.t);
+    if (ka < kb && ka >= 1 && ka <= C.warningAtSecLeft) SND.play('sfx_time_warning');
+  }
   // arrivals
   if (S.isM) {
     if (S.t >= S.m.nextArrivalT) { arrive(nextMarathonSpec()); S.m.nextArrivalT = S.t + S.m.spacing; }
@@ -587,11 +901,16 @@ function step(dt) {
   // grill
   for (let i = 0; i < S.grill.length; i++) {
     const it = S.grill[i]; if (!it) continue;
-    if (it.st === 'raw') { it.bake += dt; if (it.bake >= C.bakeSec) { it.st = 'baked'; it.over = it.bake - C.bakeSec; } }
+    if (it.st === 'raw') { it.bake += dt; if (it.bake >= C.bakeSec) { it.st = 'baked'; it.over = it.bake - C.bakeSec; SND.play('sfx_bake_ready'); } }
     else if (it.st === 'baked') {
       const before = it.over; it.over += dt;
       if (before < C.glowAfterDoneSec && it.over >= C.glowAfterDoneSec) log('flatbread_glowing', { slot: i + 1 });
-      if (it.over >= C.burnAfterDoneSec) { it.st = 'burnt'; S.burnt++; log('flatbread_burnt', { slot: i + 1 }); }
+      if (it.over >= C.glowAfterDoneSec && it.over < C.burnAfterDoneSec && it.over >= (it.nextTick || 0)) {
+        // warning tick, faster as the burn gets closer (0.5 s -> 0.12 s apart)
+        const f = (it.over - C.glowAfterDoneSec) / (C.burnAfterDoneSec - C.glowAfterDoneSec);
+        SND.play('sfx_bake_warning'); it.nextTick = it.over + 0.5 - 0.38 * f;
+      }
+      if (it.over >= C.burnAfterDoneSec) { it.st = 'burnt'; S.burnt++; log('flatbread_burnt', { slot: i + 1 }); SND.play('sfx_bake_burnt'); }
     }
   }
   // bubble spawns
@@ -707,7 +1026,7 @@ function drop(p) {
   if (si >= 0 && S.seated[si] && it.t === 'dish') { serve(S.seated[si], it); return; }
   // trash
   if (inPoly(p, L.trashPoly, 14)) {
-    S.trashed++; log('item_thrown_away', { item: describe(it) });
+    S.trashed++; log('item_thrown_away', { item: describe(it) }); SND.play('sfx_trash');
     addFloat('\u{1F5D1}', L.trashC.x, L.trashC.y - 30, '#fff', 30);
     return;
   }
@@ -715,21 +1034,21 @@ function drop(p) {
   if (inPoly(p, L.grillPoly, 12) && it.t === 'flatbread' && it.st !== 'burnt') {
     let gi = -1, gd = 1e9;
     S.grill.forEach((g, i) => { if (!g) { const d = dist(p, grillSlotPos(i)); if (d < gd) { gd = d; gi = i; } } });
-    if (gi >= 0) { S.grill[gi] = it; log('item_placed', { item: describe(it), on: 'grill' }); return; }
+    if (gi >= 0) { S.grill[gi] = it; log('item_placed', { item: describe(it), on: 'grill' }); SND.play('sfx_place'); return; }
     S.grill.forEach((g, i) => { const d = dist(p, grillSlotPos(i)); if (gi < 0 || d < gd) { gd = d; gi = i; } });
-    const old = S.grill[gi]; S.grill[gi] = it; popOff(old, it, grillSlotPos(gi), 'grill'); return;
+    const old = S.grill[gi]; S.grill[gi] = it; popOff(old, it, grillSlotPos(gi), 'grill'); SND.play('sfx_place'); return;
   }
   // plate / bowl
   for (const v of vessels()) {
     if (!inEll(p, v.e)) continue;
     const cur = v.get(), res = combine(v.kind, cur, it);
     if (res) {
-      v.set(res);
+      v.set(res); SND.play('sfx_place');
       if (cur) log('dish_assembled', { dish: res.dish, on: v.name });
       else log('item_placed', { item: describe(it), on: v.name });
       return;
     }
-    if (cur && combine(v.kind, null, it)) { v.set(it); popOff(cur, it, v.e, v.name); return; }
+    if (cur && combine(v.kind, null, it)) { v.set(it); popOff(cur, it, v.e, v.name); SND.play('sfx_place'); return; }
     log('item_refused', { item: describe(it), on: v.name, holding: describe(cur) });
     break;
   }
@@ -738,7 +1057,7 @@ function drop(p) {
     if (!inPoly(p, L.storage[i], 14)) continue;
     if (it.t === 'flatbread' && it.st === 'burnt') break;
     const old = S.storage[i];
-    S.storage[i] = it; log('item_stored', { item: describe(it), slot: i + 1 });
+    S.storage[i] = it; log('item_stored', { item: describe(it), slot: i + 1 }); SND.play('sfx_place');
     if (old) popOff(old, it, boxCenter(i), 'storage' + (i + 1));
     return;
   }
@@ -751,13 +1070,14 @@ cv.addEventListener('pointerdown', e => {
   e.preventDefault();
   if (!S || S.ended) return;
   const p = toLogical(e);
-  if (!S.paused && inRect(p, L.pauseBtn, 6)) { pauseRun(); return; }
+  if (!S.paused && inRect(p, L.pauseBtn, 6)) { SND.play('sfx_button'); pauseRun(); return; }
   if (S.paused || S.held || activePointer !== null) return;
   const got = pickupAt(p);
   if (!got) return;
   activePointer = e.pointerId;
   try { cv.setPointerCapture(e.pointerId); } catch (_) {}
   S.held = Object.assign(got, { x: p.x, y: p.y });
+  SND.play(got.fromBubble ? 'sfx_bubble_pop' : 'sfx_grab');
 });
 cv.addEventListener('pointermove', e => {
   if (e.pointerId !== activePointer || !S || !S.held) return;
@@ -1097,6 +1417,12 @@ function makeItemView(ing) { return viewCache[ing] || (viewCache[ing] = ing === 
 /* Main loop                                                               */
 /* ====================================================================== */
 let lastNow = performance.now(), acc = 0;
+let bakeLoop = null;
+function syncBakeLoop() { // sizzle while a flatbread (not burnt) is on the grill and the run is live
+  const want = !!(S && !S.paused && !S.ended && S.grill.some(it => it && it.st !== 'burnt'));
+  if (want && !bakeLoop) bakeLoop = SND.startLoop('sfx_bake_loop');
+  else if (!want && bakeLoop) { bakeLoop.stop(); bakeLoop = null; }
+}
 function frame(now) {
   const dt = Math.min(0.1, (now - lastNow) / 1000); lastNow = now;
   if (S && !S.paused && !S.ended) {
@@ -1104,6 +1430,7 @@ function frame(now) {
     while (acc >= STEP && n < 40 && !S.ended) { step(STEP); acc -= STEP; n++; }
     if (n >= 40) acc = 0;
   }
+  syncBakeLoop();
   render();
   requestAnimationFrame(frame);
 }
@@ -1138,12 +1465,13 @@ function renderLevelBtns() {
   }
 }
 function showPanel() {
-  $('summary').classList.add('hidden'); $('pauseOv').classList.add('hidden'); $('panel').classList.remove('hidden');
+  ['summary', 'pauseOv', 'soundTest', 'creditsOv'].forEach(id => $(id).classList.add('hidden')); $('panel').classList.remove('hidden');
   $('runsInfo').textContent = RUNS.length + ' run' + (RUNS.length === 1 ? '' : 's') + ' saved on this device';
   const recent = RUNS.slice(-6).reverse();
   $('recent').innerHTML = recent.map(r => `<tr><td>${esc(new Date(r.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}</td><td>${esc(r.level)}</td><td>${esc(r.tester || '-')}</td><td>${esc(r.ended)}</td><td>total ${esc(r.total)}</td><td>served ${esc(r.dishesServed)}</td><td>lost ${esc(r.customersLost)}</td></tr>`).join('');
   $('saveWarn').classList.toggle('hidden', saveOk);
   renderLevelBtns();
+  SND.duck(false); SND.music('music_title');
 }
 $('startBtn').onclick = () => {
   const tester = $('tester').value.trim();
@@ -1151,13 +1479,14 @@ $('startBtn').onclick = () => {
   $('panel').classList.add('hidden');
   activePointer = null; acc = 0; lastNow = performance.now();
   startRun(selLevel, tester);
+  SND.music('music_kitchen');
 };
 try { $('tester').value = localStorage.getItem('playfeat_last_tester') || ''; } catch (_) {}
 
-function pauseRun() { if (!S || S.ended) return; S.paused = true; log('paused'); $('pauseOv').classList.remove('hidden'); }
+function pauseRun() { if (!S || S.ended) return; S.paused = true; log('paused'); SND.duck(true); $('pauseOv').classList.remove('hidden'); }
 document.addEventListener('visibilitychange', () => { if (document.hidden && S && !S.ended && !S.paused) { pauseRun(); log('auto_paused_page_hidden'); } });
 window.addEventListener('beforeunload', e => { if (S && !S.ended) { e.preventDefault(); e.returnValue = ''; } });
-$('resumeBtn').onclick = () => { if (!S) return; S.paused = false; log('resumed'); lastNow = performance.now(); $('pauseOv').classList.add('hidden'); };
+$('resumeBtn').onclick = () => { if (!S) return; S.paused = false; log('resumed'); SND.duck(false); lastNow = performance.now(); $('pauseOv').classList.add('hidden'); };
 $('stopBtn').onclick = () => { if (!S) return; $('pauseOv').classList.add('hidden'); S.paused = false; endRun('stopped'); };
 
 function endRun(reason) {
@@ -1168,6 +1497,11 @@ function endRun(reason) {
   S.record = rec;
   RUNS.push(rec); saveRuns();
   showSummary(rec);
+  SND.duck(false); SND.music(null);
+  if (!S.isM && reason === 'completed') {
+    SND.play('sfx_day_end');
+    for (let k = 1; k <= (rec.stars || 0); k++) setTimeout(() => SND.play('sfx_star_' + k), 900 + (k - 1) * 450);
+  } else if (S.isM && reason.startsWith('lost')) SND.play('sfx_run_over');
 }
 
 function summarize() {
@@ -1259,6 +1593,121 @@ function showSummary(rec) {
 }
 function esc(v) { return String(v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
+/* ====================================================================== */
+/* Sound settings, sound test screen, credits                              */
+/* ====================================================================== */
+const SOUND_LABELS = {
+  music_kitchen: 'Music, kitchen days + marathon', music_title: 'Music, start screen', sfx_button: 'Button tap', sfx_grab: 'Item picked up',
+  sfx_bubble_pop: 'Bubble grabbed', sfx_place: 'Item placed', sfx_trash: 'Item thrown away', sfx_bake_loop: 'Baking (loop)',
+  sfx_bake_ready: 'Flatbread ready', sfx_bake_warning: 'Burn warning tick', sfx_bake_burnt: 'Flatbread burnt', sfx_customer_arrive: 'Customer arrives',
+  sfx_angry_arrive: 'Angry alien arrives', sfx_serve_ok: 'Dish served', sfx_wrong_dish: 'Wrong dish', sfx_customer_leaves: 'Customer leaves (-10)',
+  sfx_time_warning: 'Last 10 s tick', sfx_day_end: 'Day ends', sfx_star_1: 'Star 1', sfx_star_2: 'Star 2', sfx_star_3: 'Star 3', sfx_run_over: 'Marathon over',
+};
+const CREDITS = [
+  { title: 'Shake and Bake (music)', who: 'Music by Matthew Pablo, www.matthewpablo.com', license: 'CC-BY 3.0', url: 'https://opengameart.org/content/shake-and-bake', note: 'Re-encoded to AAC, looped between 27.42 s and 102.42 s.' },
+  { title: 'Outer Space Loop (music)', who: 'wipics', license: 'CC0 1.0', url: 'https://opengameart.org/content/outer-space-loop', note: 'Re-encoded to AAC, end silence skipped.' },
+  { title: 'Bowl placed on table, Kitchen oven ding, Frying eggs on hot pan', who: 'Mixkit', license: 'Mixkit Sound Effects Free License', url: 'https://mixkit.co/free-sound-effects/kitchen/', note: 'Trimmed and re-encoded; frying sound cut into a 6 s loop.' },
+  { title: 'Interface Sounds (pack)', who: 'Kenney (www.kenney.nl)', license: 'CC0 1.0', url: 'https://kenney.nl/assets/interface-sounds', note: 'Full pack included for the sound test; trimmed, mono AAC.' },
+  { title: 'Digital Audio (pack)', who: 'Kenney (www.kenney.nl)', license: 'CC0 1.0', url: 'https://kenney.nl/assets/digital-audio', note: 'Full pack included for the sound test; trimmed, mono AAC.' },
+  { title: 'Sci-fi Sounds (pack)', who: 'Kenney (www.kenney.nl)', license: 'CC0 1.0', url: 'https://kenney.nl/assets/sci-fi-sounds', note: 'Full pack included for the sound test; trimmed, mono AAC.' },
+  { title: 'Code-made sounds (chimes, ticks, bell, bonk, fzzt, hiss, stars)', who: 'Made in code with the Web Audio API (this file)', license: '-', url: '', note: '' },
+];
+const KNOWN_LOOPS = {};
+for (const [, c] of Object.entries(SOUND_DEFAULTS)) if (c.bus === 'music' && c.file) KNOWN_LOOPS[c.file] = { loopStart: c.loopStart, loopEnd: c.loopEnd };
+const sndLabel = cfg => cfg.synth ? 'code-made: ' + cfg.synth : String(cfg.file || '-').replace(/^audio\//, '');
+
+function initSoundPanel() {
+  const vm = $('volMusic'), vs = $('volSfx'), mb = $('muteBtn');
+  vm.value = SND.settings.music; vs.value = SND.settings.sfx;
+  const refresh = () => { mb.textContent = SND.settings.muted ? 'Sound off' : 'Sound on'; mb.classList.toggle('off', SND.settings.muted); };
+  vm.oninput = () => SND.setSetting('music', +vm.value);
+  vs.oninput = () => SND.setSetting('sfx', +vs.value);
+  vs.onchange = () => SND.play('sfx_place', { note: 'volume preview' });
+  mb.onclick = () => { SND.setSetting('muted', !SND.settings.muted); refresh(); };
+  refresh();
+  $('soundTestBtn').onclick = openSoundTest;
+  $('creditsBtn').onclick = openCredits;
+  $('sndBack').onclick = () => { $('soundTest').classList.add('hidden'); showPanel(); };
+  $('creditsBack').onclick = () => { $('creditsOv').classList.add('hidden'); showPanel(); };
+  $('sndStop').onclick = () => SND.stopMusic(0.2);
+  $('sndReset').onclick = () => {
+    for (const id of Object.keys(SOUND_CONFIG)) { for (const k of Object.keys(SOUND_CONFIG[id])) delete SOUND_CONFIG[id][k]; Object.assign(SOUND_CONFIG[id], JSON.parse(JSON.stringify(SOUND_DEFAULTS[id]))); }
+    SND.save(); openSoundTest();
+  };
+  $('sndExport').onclick = async () => {
+    const lines = Object.keys(SOUND_CONFIG).map(id => {
+      const c = {}; for (const [k, v] of Object.entries(SOUND_CONFIG[id])) if (v != null) c[k] = v;
+      return `  ${id}: ${JSON.stringify(c)},`;
+    });
+    const text = 'const SOUND_CONFIG = {\n' + lines.join('\n') + '\n};\n// volumes: music ' + SND.settings.music + ', effects ' + SND.settings.sfx;
+    const ta = $('sndExportText'); ta.value = text; ta.classList.remove('hidden');
+    const ok = await copyText(text);
+    $('sndStatus').textContent = ok ? 'Copied to clipboard. You can also select the text below.' : 'Select the text below and copy it.';
+  };
+}
+
+async function openSoundTest() {
+  SND.unlock();
+  ['panel', 'summary', 'creditsOv'].forEach(id => $(id).classList.add('hidden'));
+  $('soundTest').classList.remove('hidden');
+  $('sndExportText').classList.add('hidden'); $('sndStatus').textContent = '';
+  const man = await SND.loadManifest();
+  const groups = {};
+  for (const m of man) (groups[m.group] = groups[m.group] || []).push(m);
+  const tb = $('sndTable'); tb.innerHTML = '';
+  for (const id of Object.keys(SOUND_CONFIG)) {
+    const cfg = SOUND_CONFIG[id], isMusic = cfg.bus === 'music';
+    const tr = document.createElement('tr');
+    const cur = cfg.synth ? 'synth:' + cfg.synth : cfg.file;
+    let opts = '';
+    if (cur && !cur.startsWith('synth:') && !man.some(m => m.file === cur)) opts += `<option value="${esc(cur)}">${esc(cur)}</option>`;
+    for (const [g, list] of Object.entries(groups)) {
+      if (isMusic !== (g === 'Music')) continue;
+      opts += `<optgroup label="${esc(g)}">` + list.map(m => `<option value="${esc(m.file)}">${esc(m.name)} (${m.dur}s)</option>`).join('') + '</optgroup>';
+    }
+    if (!isMusic) opts += '<optgroup label="Code-made">' + Object.keys(SYNTH).map(s => `<option value="synth:${s}">${s}</option>`).join('') + '</optgroup>';
+    tr.innerHTML = `<td><b>${esc(id)}</b><br><span class="muted">${esc(SOUND_LABELS[id] || '')}</span></td>
+      <td class="cur"></td><td><select data-nosfx="1">${opts}</select></td><td class="btns"></td>`;
+    tr.querySelector('.cur').textContent = sndLabel(cfg);
+    const sel = tr.querySelector('select'); sel.value = cur || '';
+    const playIt = () => isMusic ? SND.music(id, 0) : SND.play(id, { note: 'sound test' });
+    sel.onchange = () => {
+      const v = sel.value;
+      if (v.startsWith('synth:')) { cfg.synth = v.slice(6); delete cfg.file; } else { cfg.file = v; delete cfg.synth; if (isMusic) Object.assign(cfg, KNOWN_LOOPS[v] || { loopStart: 0, loopEnd: null }); }
+      SND.save(); tr.querySelector('.cur').textContent = sndLabel(cfg);
+      if (cfg.file) SND.load(cfg.file).then(playIt).catch(() => {}); else playIt();
+      if (isMusic) openSoundTest();
+    };
+    const btns = tr.querySelector('.btns');
+    const mk = (txt, fn) => { const b = document.createElement('button'); b.className = 'small'; b.dataset.nosfx = '1'; b.textContent = txt; b.onclick = fn; btns.appendChild(b); return b; };
+    mk('▶ Play', playIt);
+    if (isMusic) {
+      mk('Seam', () => SND.music(id, Math.max(0, (cfg.loopEnd || 0) - 4)));
+      const span = document.createElement('div'); span.className = 'muted loopin';
+      span.innerHTML = `loop <input type="number" step="0.01" value="${cfg.loopStart ?? 0}"> to <input type="number" step="0.01" value="${cfg.loopEnd ?? ''}"> s`;
+      const [a, b] = span.querySelectorAll('input');
+      a.onchange = () => { cfg.loopStart = +a.value; SND.save(); };
+      b.onchange = () => { cfg.loopEnd = b.value === '' ? null : +b.value; SND.save(); };
+      btns.appendChild(span);
+    }
+    tb.appendChild(tr);
+  }
+}
+
+function openCredits() {
+  ['panel', 'summary', 'soundTest'].forEach(id => $(id).classList.add('hidden'));
+  const used = [...new Set(Object.values(SOUND_CONFIG).map(sndLabel))];
+  $('creditsBody').innerHTML = CREDITS.map(c => `<div class="credit"><b>${esc(c.title)}</b><br>${esc(c.who)}<br>License: ${esc(c.license)}${c.url ? ` &middot; <a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.url)}</a>` : ''}${c.note ? `<br><span class="muted">${esc(c.note)}</span>` : ''}</div>`).join('')
+    + `<div class="credit muted">Sounds in use now: ${used.map(esc).join(', ')}</div>`;
+  $('creditsOv').classList.remove('hidden');
+}
+
+document.addEventListener('click', e => {
+  const b = e.target && e.target.closest ? e.target.closest('button') : null;
+  if (b && !b.dataset.nosfx) SND.play('sfx_button');
+});
+
+initSoundPanel();
 showPanel();
 
 // Test hook (used by the automated playthrough; not visible to testers)
@@ -1266,7 +1715,7 @@ window.__pf = {
   get S() { return S; }, L, CFG, get runs() { return RUNS; },
   computeNeeded: () => computeNeeded(), tsvRow, COLS,
   toClient(x, y) { const r = cv.getBoundingClientRect(); return { x: r.left + x * scale, y: r.top + y * scale }; },
-  grillSlotPos,
+  grillSlotPos, SND, SOUND_CONFIG, get soundLog() { return SND.soundLog; },
   centers() {
     return { trash: L.trashC, grill: grillSlotPos(0), plate: { x: L.plates[0].x, y: L.plates[0].y }, bowl: { x: L.bowl.x, y: L.bowl.y },
       storage: L.storage.map((_, i) => boxCenter(i)), slots: L.slots.map((_, i) => slotCenter(i)), pause: { x: L.pauseBtn.x + 24, y: L.pauseBtn.y + 24 } };
