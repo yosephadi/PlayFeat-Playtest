@@ -164,6 +164,26 @@
                    { "type": "regular", "order": "mushroom", "count": 1 },
                    { "type": "regular", "order": "sorbet",   "count": 1 } ] }
     ]
+  },
+  "marathonRounds": {
+    "_help": "Marathon Rounds (V2). Uses every marathon setting above, plus: rounds of roundSec play time, a card break of breakSec, storage slots unlocked at these dish counts. Card 'apply': bakeSec, grillSlots, patienceMult (new arrivals), value (ingredient points). 'needs' = only offered after that card. offers = breaks 1..3; from break 4 on, the next 3 unowned cards of 'fallback'.",
+    "name": "Marathon Rounds",
+    "roundSec": 90,
+    "breakSec": 15,
+    "storageUnlockAt": [6, 14],
+    "cards": [
+      { "id": "grill1",    "name": "Faster Grill I",        "effect": "Bake time 6 s \u2192 4.5 s",          "icon": "G1", "price": 20, "apply": { "bakeSec": 4.5 } },
+      { "id": "grill2",    "name": "Faster Grill II",       "effect": "Bake time 4.5 s \u2192 3.5 s",        "icon": "G2", "price": 30, "needs": "grill1", "apply": { "bakeSec": 3.5 } },
+      { "id": "grillspot", "name": "Second Grill Spot",     "effect": "Grill holds 2 flatbreads at once",      "icon": "2\u00d7", "price": 35, "apply": { "grillSlots": 2 } },
+      { "id": "cozy",      "name": "Cozy Seats",            "effect": "New customers wait 10% longer",         "icon": "CS", "price": 20, "apply": { "patienceMult": 1.1 } },
+      { "id": "pepper",    "name": "Blazing Ember Pepper",  "effect": "Ember Pepper 10 \u2192 15 points",     "icon": "P+", "price": 15, "apply": { "value": { "pepper": 15 } } },
+      { "id": "mushroom",  "name": "Royal Dusk Mushroom",   "effect": "Dusk Mushroom 15 \u2192 20 points",    "icon": "M+", "price": 25, "apply": { "value": { "mushroom": 20 } } },
+      { "id": "sorbet",    "name": "Double Sunset Sorbet",  "effect": "Sunset Sorbet 10 \u2192 15 points",    "icon": "S+", "price": 20, "apply": { "value": { "sorbet": 15 } } },
+      { "id": "drizzle",   "name": "Honey-Gold Drizzle",    "effect": "Amber Drizzle 5 \u2192 10 points",     "icon": "D+", "price": 10, "apply": { "value": { "drizzle": 10 } } },
+      { "id": "flatbread", "name": "Golden Dusk Flatbread", "effect": "Dusk Flatbread 10 \u2192 15 points",   "icon": "F+", "price": 30, "apply": { "value": { "flatbread": 15 } } }
+    ],
+    "offers": [["grill1", "pepper", "cozy"], ["grillspot", "mushroom", "grill2"], ["grill2", "cozy", "sorbet"]],
+    "fallback": ["drizzle", "flatbread", "sorbet", "mushroom", "pepper", "cozy", "grillspot", "grill2"]
   }
 }
 </script>
@@ -218,6 +238,23 @@
   .loopin input { width: 82px; min-width: 0; font-size: 14px; padding: 4px; }
   #sndExportText { height: 220px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
   .credit { margin: 10px 0; line-height: 1.4; }
+  .brk { width: calc(100% - 40px); max-width: 980px; }
+  .brk-head { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
+  .brk-titles { flex: 1; } .brk-title { font-size: 30px; font-weight: 800; }
+  .ring { width: 86px; height: 86px; transform: rotate(-90deg); }
+  .ring text { transform: rotate(90deg); transform-origin: 40px 40px; fill: #fff; font: 800 24px -apple-system, system-ui, sans-serif; }
+  .ring-bg { fill: none; stroke: #45235f; stroke-width: 8; } .ring-fg { fill: none; stroke: #ffd84a; stroke-width: 8; stroke-linecap: round; }
+  .coin { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%;
+    background: radial-gradient(#ffd84a 55%, #f39c12 58%); color: #7a1fa2; font-size: 16px; margin-right: 6px; }
+  .coinpill { background: #fdf8f0; color: #2d1650; border-radius: 24px; padding: 8px 16px; font-size: 20px; display: flex; align-items: center; }
+  .brk-cards { display: flex; gap: 18px; }
+  .upc { flex: 1; min-height: 230px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 10px;
+    background: #fdf8f0; color: #2d1650; border: 4px solid #ffb347; border-radius: 20px; padding: 18px 14px; }
+  .upc .ic { width: 64px; height: 64px; border-radius: 16px; background: #7d45b0; color: #fff; font-size: 24px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .upc .nm { font-size: 24px; font-weight: 800; line-height: 1.15; } .upc .fx { font-size: 18px; font-weight: 500; }
+  .upc .pr { font-size: 24px; font-weight: 800; display: flex; align-items: center; }
+  .upc.cant { opacity: 0.4; filter: grayscale(1); } .upc.bought { background: #c8f2cf; border-color: #3ec15a; }
+  .upc.bought .pr { color: #14401f; }
   .credit a { color: #ffb36b; word-break: break-all; }
   #recent { font-size: 15px; margin-top: 4px; }
   #recent td { padding: 3px 6px; }
@@ -240,6 +277,17 @@
   <div class="row"><span class="muted">Download all runs:</span>
     <button class="small dlCsv">CSV</button><button class="small dlJson">JSON</button></div>
   <div class="row warn hidden" id="saveWarn">Runs could not be saved on this device. Download them before closing this page.</div>
+</div></div>
+
+<!-- Marathon Rounds: card break -->
+<div id="breakOv" class="ov hidden"><div class="brk">
+  <div class="brk-head">
+    <svg class="ring" viewBox="0 0 80 80"><circle cx="40" cy="40" r="34" class="ring-bg"/><circle id="brkRing" cx="40" cy="40" r="34" class="ring-fg"/><text id="brkSecs" x="40" y="48" text-anchor="middle">15</text></svg>
+    <div class="brk-titles"><div class="brk-title" id="brkTitle">Round done</div><div class="muted" id="brkSub"></div></div>
+    <div class="coinpill"><span class="coin">✦</span><b id="brkCoins">0</b>&nbsp;marathon coins</div>
+  </div>
+  <div class="brk-cards" id="brkCards"></div>
+  <div class="row" style="justify-content:center"><button id="brkDone" class="big">Done</button></div>
 </div></div>
 
 <!-- Sound test -->
@@ -664,11 +712,11 @@ resize();
 /* ====================================================================== */
 let S = null; // current run
 
-function levelCfg(id) { return id === 'marathon' ? CFG.marathon : CFG.levels[id]; }
-function levelName(id) { return id === 'marathon' ? 'Marathon' : `${id} ${CFG.levels[id].name}`; }
+function levelCfg(id) { return id === 'marathon' ? CFG.marathon : id === 'rounds' ? Object.assign({}, CFG.marathon, CFG.marathonRounds) : CFG.levels[id]; }
+function levelName(id) { return id === 'marathon' ? 'Marathon' : id === 'rounds' ? CFG.marathonRounds.name : `${id} ${CFG.levels[id].name}`; }
 
 function startRun(levelId, tester) {
-  const isM = levelId === 'marathon';
+  const isM = levelId === 'marathon' || levelId === 'rounds';
   const lv = levelCfg(levelId);
   const storageSlots = lv.storageSlots ?? C.storageSlots;
   S = {
@@ -685,6 +733,7 @@ function startRun(levelId, tester) {
     serveTimes: [], waits: [], stage: 1,
   };
   S.nextSpawnT = (S.starters.length ? S.starters[S.starters.length - 1].t : 0) + lv.bubbleEverySec;
+  if (levelId === 'rounds') initRounds();
   if (isM) {
     S.m = { patience: lv.patienceStart, angryPatience: lv.angryPatienceStart, spacing: lv.spacingStart,
       nextArrivalT: 0, deck: [], groups: 0 };
@@ -738,7 +787,7 @@ function dishFor(base, topping) {
   for (const [k, d] of Object.entries(DISH)) if (d.base === base && d.topping === topping) return k;
   return null;
 }
-function dishPoints(k) { const d = DISH[k]; return ING[d.base].value + ING[d.topping].value; }
+function dishPoints(k) { const d = DISH[k]; return ingValue(d.base) + ingValue(d.topping); }
 
 /* ====================================================================== */
 /* Customers                                                               */
@@ -781,6 +830,7 @@ function serve(c, it) {
   }
   const pts = dishPoints(c.order), tip = liveTip(c), wait = S.t - c.seatedT;
   S.score += pts; S.tips += tip; S.served++;
+  if (S.rounds) { S.rounds.coins += tip; checkStorageUnlock(); }  // 1 marathon coin per tip
   S.waits.push(wait); S.serveTimes.push(S.t);
   SND.play('sfx_serve_ok');
   log('dish_served', { cid: c.id, dish: c.order, angry: c.type === 'angry', points: pts, tip,
@@ -803,6 +853,117 @@ function loseCustomer(c) {
   if (S.isM && S.lost >= S.lv.maxLost) endRun('lost ' + S.lv.maxLost);
 }
 
+/* ---------------- Marathon Rounds (V2) — only active when S.rounds exists ---------------- */
+const RC = () => CFG.marathonRounds;
+const bakeSecNow = () => (S && S.rounds ? S.rounds.bakeSec : C.bakeSec);
+const ingValue = k => (S && S.rounds ? S.rounds.values[k] : ING[k].value);
+function initRounds() {
+  S.rounds = {
+    round: 1, roundEndAt: RC().roundSec, coins: 0, owned: [], bakeSec: C.bakeSec, patienceMult: 1,
+    values: Object.fromEntries(Object.entries(ING).map(([k, v]) => [k, v.value])),
+    inBreak: false, breakNo: 0, breakLeft: 0, breakUsed: 0, breakTime: 0, offer: [], boughtThisBreak: [],
+    dishesAtBreaks: [], lostAtRoundStart: 0, lostPerRound: [], flash: null,
+  };
+  S.storage = [];  // storage slots unlock by dishes served
+}
+const cardById = id => RC().cards.find(c => c.id === id);
+const owns = id => S.rounds.owned.some(o => o.id === id);
+const eligible = c => !owns(c.id) && (!c.needs || owns(c.needs));
+function offersFor(n) {
+  const r = RC(), out = [], list = r.offers[n - 1];
+  const ok = id => { const c = cardById(id); return !!c && eligible(c) && !out.includes(id); };
+  if (list) {
+    for (const id of list) {
+      if (ok(id)) { out.push(id); continue; }
+      const alt = r.fallback.find(f => ok(f) && !list.includes(f));  // replace with the next unowned fallback card
+      if (alt) out.push(alt);
+    }
+  } else for (const id of r.fallback) if (out.length < 3 && ok(id)) out.push(id);
+  return out;
+}
+function checkStorageUnlock() {
+  const thr = RC().storageUnlockAt;
+  while (S.storage.length < Math.min(thr.length, L.storage.length) && S.served >= thr[S.storage.length]) {
+    S.storage.push(null);
+    const slot = S.storage.length;
+    S.rounds.flash = { slot, until: performance.now() + 1000 };
+    log('storage_unlocked', { slot, dishesServed: S.served });
+    SND.play('sfx_star_1');
+  }
+}
+function startBreak() {
+  const R = S.rounds;
+  if (S.held) {  // cancel a drag: the item hovers where it was, frozen through the break, no penalty
+    const h = S.held; S.held = null; activePointer = null;
+    S.hovering.push({ item: h.item, x: h.x, y: h.y, age: 0 });
+    if (h.fromBubble) log('bubble_popped', { ing: h.ing });
+    log('drag_cancelled_round_end', { item: describe(h.item) });
+  }
+  R.lostPerRound.push(S.lost - R.lostAtRoundStart); R.lostAtRoundStart = S.lost;
+  R.dishesAtBreaks.push(S.served);
+  log('round_end', { round: R.round, dishes: S.served, lost: S.lost, coins: R.coins });
+  R.inBreak = true; R.breakNo++; R.breakLeft = RC().breakSec; R.breakUsed = 0; R.boughtThisBreak = [];
+  R.offer = offersFor(R.breakNo);
+  log('break_start', { break: R.breakNo, round: R.round });
+  log('card_offered', { break: R.breakNo, ids: R.offer.slice() });
+  SND.duck(true);
+  renderBreak(); $('breakOv').classList.remove('hidden');
+}
+function tickBreak(dt) {
+  const R = S.rounds;
+  R.breakLeft -= dt; R.breakUsed += dt;
+  if (R.breakLeft <= 0) endBreak('timeout'); else drawBreakRing();
+}
+function endBreak(how) {
+  const R = S && S.rounds;
+  if (!R || !R.inBreak) return;
+  const used = Math.min(R.breakUsed, RC().breakSec);
+  R.breakTime += used; R.inBreak = false;
+  log(how === 'timeout' ? 'break_timeout' : 'break_done', { break: R.breakNo, secondsUsed: r2(used), bought: R.boughtThisBreak.slice() });
+  R.round++; R.roundEndAt += RC().roundSec;
+  $('breakOv').classList.add('hidden');
+  SND.duck(false); acc = 0; lastNow = performance.now();
+}
+function buyCard(id) {
+  const R = S && S.rounds, c = cardById(id);
+  if (!R || !R.inBreak || !c || owns(id) || !R.offer.includes(id) || R.coins < c.price) return false;
+  const before = R.coins;
+  R.coins -= c.price;                      // spends marathon coins only: score and tips never change
+  R.owned.push({ id, break: R.breakNo }); R.boughtThisBreak.push(id);
+  const a = c.apply || {};
+  if (a.bakeSec) R.bakeSec = a.bakeSec;
+  if (a.grillSlots) while (S.grill.length < a.grillSlots) S.grill.push(null);
+  if (a.patienceMult) R.patienceMult = a.patienceMult;
+  if (a.value) Object.assign(R.values, a.value);
+  log('card_picked', { id, price: c.price, coinsBefore: before, coinsAfter: R.coins, break: R.breakNo });
+  SND.play('sfx_button');
+  renderBreak();
+  return true;
+}
+function renderBreak() {
+  const R = S.rounds;
+  $('brkTitle').textContent = R.offer.length ? `Round ${R.round} done · Break ${R.breakNo}` : `Round ${R.round} done · Rest`;
+  $('brkSub').textContent = R.offer.length ? 'Buy upgrades for the next round. Tap a card to buy it.' : 'Nothing left to buy. Take a breather.';
+  $('brkCoins').textContent = R.coins;
+  const box = $('brkCards'); box.innerHTML = '';
+  for (const id of R.offer) {
+    const c = cardById(id), bought = owns(id), cant = !bought && R.coins < c.price;
+    const b = document.createElement('button');
+    b.className = 'upc' + (bought ? ' bought' : '') + (cant ? ' cant' : '');
+    b.dataset.nosfx = '1'; b.dataset.card = id; b.disabled = bought || cant;
+    b.innerHTML = `<span class="ic">${esc(c.icon || '')}</span><span class="nm">${esc(c.name)}</span><span class="fx">${esc(c.effect)}</span>`
+      + `<span class="pr">${bought ? 'Bought' : `<span class="coin">✦</span> ${c.price}`}</span>`;
+    b.onclick = () => buyCard(id);
+    box.appendChild(b);
+  }
+  drawBreakRing();
+}
+function drawBreakRing() {
+  const R = S.rounds, f = Math.max(0, R.breakLeft) / RC().breakSec, circ = 2 * Math.PI * 34;
+  const ring = $('brkRing'); ring.style.strokeDasharray = circ; ring.style.strokeDashoffset = circ * (1 - f);
+  $('brkSecs').textContent = Math.ceil(Math.max(0, R.breakLeft));
+}
+
 /* Marathon */
 function dealGroup() {
   const st = stageCfg(), g = [];
@@ -819,7 +980,7 @@ function dealGroup() {
 function nextMarathonSpec() {
   if (!S.m.deck.length) dealGroup();
   const s = S.m.deck.shift();
-  return { type: s.type, order: s.order, patience: s.type === 'angry' ? S.m.angryPatience : S.m.patience };
+  return { type: s.type, order: s.order, patience: (s.type === 'angry' ? S.m.angryPatience : S.m.patience) * (S.rounds ? S.rounds.patienceMult : 1) };
 }
 function rampAfterServe() {
   const m = S.m, lv = S.lv;
@@ -914,7 +1075,7 @@ function step(dt) {
   // grill
   for (let i = 0; i < S.grill.length; i++) {
     const it = S.grill[i]; if (!it) continue;
-    if (it.st === 'raw') { it.bake += dt; if (it.bake >= C.bakeSec) { it.st = 'baked'; it.over = it.bake - C.bakeSec; SND.play('sfx_bake_ready'); } }
+    if (it.st === 'raw') { it.bake += dt; if (it.bake >= bakeSecNow()) { it.st = 'baked'; it.over = it.bake - bakeSecNow(); SND.play('sfx_bake_ready'); } }
     else if (it.st === 'baked') {
       const before = it.over; it.over += dt;
       if (before < C.glowAfterDoneSec && it.over >= C.glowAfterDoneSec) log('flatbread_glowing', { slot: i + 1 });
@@ -953,6 +1114,8 @@ function step(dt) {
     const nobody = !S.seated.length && !S.outside.length;
     if (allArrived && nobody && (S.t >= C.durationSec || C.endEarlyWhenAllDone)) endRun('completed');
   }
+  // Marathon Rounds: at the end of a round everything freezes and the card break opens
+  if (S.rounds && !S.ended && !S.rounds.inBreak && S.t >= S.rounds.roundEndAt - 1e-6) startBreak();
 }
 
 function addFloat(text, x, y, color, size) { S.floats.push({ text, x, y, color, size: size || 32, age: 0 }); }
@@ -1280,7 +1443,7 @@ function drawGrill(st) {
     }
     drawItem(it, p.x, p.y, 1);
     let frac, col;
-    if (it.st === 'raw') { frac = it.bake / C.bakeSec; col = '#fff36b'; }
+    if (it.st === 'raw') { frac = it.bake / bakeSecNow(); col = '#fff36b'; }
     else if (it.st === 'baked') { frac = it.over / C.burnAfterDoneSec; col = '#ff2a00'; }
     else { frac = 1; col = '#000'; }
     ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, 54, 40, 0, 0, Math.PI * 2); ctx.stroke();
@@ -1316,9 +1479,11 @@ function drawVessels(st) {
 
 function drawStorage(st) {
   // steel prep rail (mirrors the trash strip on the left)
+  if (!st.storage.length) return;  // Marathon Rounds: nothing here until a slot unlocks
   ctx.fillStyle = '#d3d7e0'; poly(L.rail); ctx.fill();
   ctx.strokeStyle = '#9aa0ad'; ctx.lineWidth = 3; ctx.stroke();
   L.storage.forEach((q, i) => {
+    if (i >= st.storage.length) return;
     const rim = q.map(v => ({ x: v.x, y: v.y }));
     ctx.fillStyle = '#8f95a6'; poly(rim); ctx.fill();
     const c = boxCenter(i), inner = q.map(v => ({ x: c.x + (v.x - c.x) * 0.84, y: c.y + (v.y - c.y) * 0.8 }));
@@ -1329,6 +1494,11 @@ function drawStorage(st) {
     ctx.beginPath(); ctx.moveTo(rim[3].x, rim[3].y); ctx.lineTo(rim[2].x, rim[2].y); ctx.stroke();
   });
   st.storage.forEach((it, i) => { if (it && L.storage[i]) { const c = boxCenter(i); drawItem(it, c.x, c.y - 4, 0.8); } });
+  const fl = S && S.rounds && S.rounds.flash;
+  if (fl && performance.now() < fl.until && L.storage[fl.slot - 1]) {
+    const a = 0.35 + 0.35 * Math.sin(performance.now() / 70);
+    ctx.fillStyle = `rgba(255,230,80,${a})`; poly(L.storage[fl.slot - 1]); ctx.fill();
+  }
   const shk = shakeOf('storage');
   if (shk) { const q = L.storage[+shk.which.slice(7) - 1]; if (q) { ctx.fillStyle = `rgba(255,40,40,${shk.a})`; poly(q.map(v => ({ x: v.x + shk.dx, y: v.y }))); ctx.fill(); } }
 }
@@ -1425,7 +1595,31 @@ function drawHUD() {
     ctx.fillStyle = '#f5b400'; rr(bx, by - 5, Math.max(0, Math.min(1, total / max)) * bw, 10, 5); ctx.fill();
     targets.forEach(tg => { const mx = bx + tg / max * bw; txt('★', mx, by - 16, 20, total >= tg ? '#f5b400' : '#b9a9cf'); });
   }
+  if (S.rounds) drawRoundsHUD();
   if (S.outside.length) { pill(800, 150, '#2a1640'); txt('+' + S.outside.length + ' waiting outside', 875, 35, 14, '#fff'); }
+}
+
+function drawRoundsHUD() {
+  const R = S.rounds, ink = '#2d1650', left = Math.max(0, R.roundEndAt - S.t);
+  const small = (x, w, col) => { ctx.fillStyle = 'rgba(30,20,70,0.25)'; rr(x + 2, 66, w, 32, 16); ctx.fill(); ctx.fillStyle = col || '#fdf8f0'; rr(x, 64, w, 32, 16); ctx.fill(); };
+  small(24, 172); txt(`Round ${R.round} · ${fmt(Math.ceil(left))}`, 110, 80, 18, left <= 10 && Math.sin(S.t * 10) > -0.3 ? '#e8213a' : ink, 'center', 800);
+  small(214, 210); ctx.fillStyle = '#f39c12'; ell(232, 80, 13, 13); ctx.fill(); ctx.fillStyle = '#ffd84a'; ell(232, 80, 9, 9); ctx.fill();
+  txt('✦', 232, 81, 11, '#7a1fa2'); txt(`${R.coins} marathon coins`, 322, 80, 16, ink, 'center', 800);
+  R.owned.forEach((o, i) => {  // owned cards as small icons
+    const c = cardById(o.id), x = 450 + i * 40;
+    ctx.fillStyle = '#7d45b0'; rr(x, 64, 34, 32, 8); ctx.fill(); ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 2; ctx.stroke();
+    txt(c.icon || '?', x + 17, 80, 13, '#fff', 'center', 800);
+  });
+  // storage unlock progress: right side of the kitchen
+  const thr = RC().storageUnlockAt, max = thr[thr.length - 1], x = 986, y0 = 548, y1 = 330, f = Math.min(1, S.served / max);
+  ctx.fillStyle = 'rgba(20,10,40,0.55)'; rr(x - 8, y1 - 10, 16, y0 - y1 + 20, 8); ctx.fill();
+  ctx.fillStyle = '#ffd84a'; rr(x - 5, y0 - (y0 - y1) * f, 10, (y0 - y1) * f, 5); ctx.fill();
+  thr.forEach((t, i) => {
+    const y = y0 - (y0 - y1) * t / max, on = S.storage.length > i;
+    ctx.fillStyle = on ? '#3ee05a' : '#fdf8f0'; rr(x - 13, y - 9, 26, 18, 5); ctx.fill();
+    txt(String(t), x, y + 1, 12, on ? '#14401f' : ink, 'center', 800);
+  });
+  txt('storage', x, y0 + 20, 11, 'rgba(255,255,255,0.8)', 'center', 700);
 }
 
 const EMPTY_ST = { grill: new Array(C.grillSlots).fill(null), plates: L.plates.map(() => null), bowl: null, storage: L.storage.map(() => null) };
@@ -1477,15 +1671,17 @@ function makeItemView(ing) { return viewCache[ing] || (viewCache[ing] = ing === 
 let lastNow = performance.now(), acc = 0;
 let bakeLoop = null;
 function syncBakeLoop() { // sizzle while a flatbread (not burnt) is on the grill and the run is live
-  const want = !!(S && !S.paused && !S.ended && S.grill.some(it => it && it.st !== 'burnt'));
+  const want = !!(S && !S.paused && !S.ended && !(S.rounds && S.rounds.inBreak) && S.grill.some(it => it && it.st !== 'burnt'));
   if (want && !bakeLoop) bakeLoop = SND.startLoop('sfx_bake_loop');
   else if (!want && bakeLoop) { bakeLoop.stop(); bakeLoop = null; }
 }
 function frame(now) {
   const dt = Math.min(0.1, (now - lastNow) / 1000); lastNow = now;
-  if (S && !S.paused && !S.ended) {
+  const inBreak = !!(S && S.rounds && S.rounds.inBreak);
+  if (S && !S.paused && !S.ended && inBreak) tickBreak(dt * SPEED);
+  else if (S && !S.paused && !S.ended) {
     acc += dt * SPEED; let n = 0;
-    while (acc >= STEP && n < 40 && !S.ended) { step(STEP); acc -= STEP; n++; }
+    while (acc >= STEP && n < 40 && !S.ended && !(S.rounds && S.rounds.inBreak)) { step(STEP); acc -= STEP; n++; }
     if (n >= 40) acc = 0;
   }
   syncBakeLoop();
@@ -1510,7 +1706,7 @@ function saveRuns() {
 }
 loadRuns();
 
-const LEVELS = ['1-1', '1-2', '1-3', '1-4', 'marathon'];
+const LEVELS = ['1-1', '1-2', '1-3', '1-4', 'marathon', 'rounds'];
 let selLevel = '1-1';
 function renderLevelBtns() {
   $('levelBtns').innerHTML = '';
@@ -1542,7 +1738,7 @@ $('startBtn').onclick = () => {
 try { $('tester').value = localStorage.getItem('playfeat_last_tester') || ''; } catch (_) {}
 
 function pauseRun() { if (!S || S.ended) return; S.paused = true; log('paused'); SND.duck(true); $('pauseOv').classList.remove('hidden'); }
-document.addEventListener('visibilitychange', () => { if (document.hidden && S && !S.ended && !S.paused) { pauseRun(); log('auto_paused_page_hidden'); } });
+document.addEventListener('visibilitychange', () => { if (document.hidden && S && !S.ended && !S.paused && !(S.rounds && S.rounds.inBreak)) { pauseRun(); log('auto_paused_page_hidden'); } });
 window.addEventListener('beforeunload', e => { if (S && !S.ended) { e.preventDefault(); e.returnValue = ''; } });
 $('resumeBtn').onclick = () => { if (!S) return; S.paused = false; log('resumed'); SND.duck(false); lastNow = performance.now(); $('pauseOv').classList.add('hidden'); };
 $('stopBtn').onclick = () => { if (!S) return; $('pauseOv').classList.add('hidden'); S.paused = false; endRun('stopped'); };
@@ -1578,6 +1774,15 @@ function summarize() {
     itemsDroppedVanished: S.vanished, itemsThrownAway: S.trashed,
     orderSequence: S.orderSequence,
     notes: '',
+    mode: S.levelId === 'rounds' ? 'marathon_rounds' : S.isM ? 'marathon' : 'story',
+    ...(S.rounds ? (R => ({
+      roundsCompleted: R.dishesAtBreaks.length,
+      cardsBought: R.owned.map(o => `${o.id}@break${o.break}`).join('; '),
+      finalBakeSec: R.bakeSec, coinsUnspent: R.coins,
+      playTimeSec: r1(S.t), breakTimeSec: r1(R.breakTime), totalTimeSec: r1(S.t + R.breakTime),
+      dishesAtBreaks: R.dishesAtBreaks.join('; '),
+      lostPerRound: R.lostPerRound.concat([S.lost - R.lostAtRoundStart]).join('; '),
+    }))(S.rounds) : {}),
     levelConfig: JSON.parse(JSON.stringify(S.lv)),
     events: S.events,
   };
@@ -1590,6 +1795,10 @@ const COLS = [
   ['avg_s_between_serves', 'avgSecBetweenServes'], ['avg_wait_s', 'avgWaitSec'], ['burnt_flatbreads', 'burntFlatbreads'],
   ['bubbles_missed', 'bubblesMissed'], ['wrong_dishes', 'wrongDishes'], ['wrong_placements', 'wrongPlacements'], ['items_dropped_vanished', 'itemsDroppedVanished'],
   ['items_thrown_away', 'itemsThrownAway'], ['notes', 'notes'],
+  // added for Marathon Rounds (empty for other modes, except mode)
+  ['mode', 'mode'], ['rounds_completed', 'roundsCompleted'], ['cards_bought', 'cardsBought'], ['final_bake_s', 'finalBakeSec'],
+  ['coins_unspent', 'coinsUnspent'], ['play_time_s', 'playTimeSec'], ['break_time_s', 'breakTimeSec'], ['total_time_s', 'totalTimeSec'],
+  ['dishes_at_breaks', 'dishesAtBreaks'], ['lost_per_round', 'lostPerRound'],
 ];
 const cell = v => v == null ? '' : String(v);
 function tsvRow(rec) { return COLS.map(([, k]) => cell(rec[k]).replace(/[\t\r\n]+/g, ' ')).join('\t'); }
@@ -1626,6 +1835,7 @@ $('copyHead').onclick = async () => { const ok = await copyText(COLS.map(c => c[
 function currentRecord() { return S && S.record; }
 $('notes').addEventListener('input', () => { const rec = currentRecord(); if (rec) { rec.notes = $('notes').value; saveRuns(); } });
 $('backBtn').onclick = () => showPanel();
+$('brkDone').onclick = () => endBreak('done');
 
 function showSummary(rec) {
   $('sumTitle').textContent = 'Run summary: ' + rec.levelName;
@@ -1636,6 +1846,10 @@ function showSummary(rec) {
   ];
   if (rec.stars != null) rows.push(['Stars (targets ' + rec.starTargets.join(' / ') + ')', rec.stars + ' / 3']);
   if (rec.stageReached != null) rows.push(['Stage reached', rec.stageReached]);
+  if (rec.mode === 'marathon_rounds') rows.push(
+    ['Rounds completed', rec.roundsCompleted], ['Cards bought', rec.cardsBought || '-'], ['Final bake time (s)', rec.finalBakeSec],
+    ['Marathon coins unspent', rec.coinsUnspent], ['Play / break / total time (s)', `${rec.playTimeSec} / ${rec.breakTimeSec} / ${rec.totalTimeSec}`],
+    ['Dishes at each break', rec.dishesAtBreaks || '-'], ['Lost per round', rec.lostPerRound]);
   rows.push(
     ['Avg seconds between serves', rec.avgSecBetweenServes ?? '-'], ['Avg wait per customer (s)', rec.avgWaitSec ?? '-'],
     ['Burnt flatbreads', rec.burntFlatbreads], ['Bubbles missed', rec.bubblesMissed], ['Wrong dishes refused', rec.wrongDishes], ['Wrong placements', rec.wrongPlacements ?? 0],
@@ -1773,7 +1987,7 @@ window.__pf = {
   get S() { return S; }, L, CFG, get runs() { return RUNS; },
   computeNeeded: () => computeNeeded(), tsvRow, COLS,
   toClient(x, y) { const r = cv.getBoundingClientRect(); return { x: r.left + x * scale, y: r.top + y * scale }; },
-  grillSlotPos, SND, SOUND_CONFIG, get soundLog() { return SND.soundLog; },
+  grillSlotPos, SND, SOUND_CONFIG, buyCard, endBreak, offersFor, get R() { return S && S.rounds; }, get soundLog() { return SND.soundLog; },
   centers() {
     return { trash: L.trashC, grill: grillSlotPos(0), plate: { x: L.plates[0].x, y: L.plates[0].y }, bowl: { x: L.bowl.x, y: L.bowl.y },
       storage: L.storage.map((_, i) => boxCenter(i)), slots: L.slots.map((_, i) => slotCenter(i)), pause: { x: L.pauseBtn.x + 24, y: L.pauseBtn.y + 24 } };

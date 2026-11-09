@@ -3,7 +3,7 @@ Usage: smoke.py OUTDIR"""
 import sys
 from collections import Counter
 from playwright.sync_api import sync_playwright
-from harness import server, Checks, new_context, Game
+from harness import server, Checks, new_context, Game, finish
 
 OUT = sys.argv[1]
 check, errors = Checks(), []
@@ -16,7 +16,7 @@ with server() as port, sync_playwright() as p:
     check('idle 1-4: all 8 lost, score 0, overtime', rec['customersLost'] == 8 and rec['score'] == 0 and rec['runTimeSec'] > 90)
     check('1-4 order counts kept', Counter(rec['orderSequence']) == Counter({'pepper': 2, 'mushroom': 2, 'sorbet': 2, 'ANGRY sorbet': 2}))
     useful = [e['t'] for e in ev if e['e'] == 'bubble_spawned' and e['useful']]
-    check('useful bubble at least every 6 s', max(b2 - a for a, b2 in zip(useful, useful[1:])) <= 6.01)
+    check('useful bubble at least every 6 s (within one 1/60 s frame)', max(b2 - a for a, b2 in zip(useful, useful[1:])) <= 6.0 + 1 / 60 + 0.005)
     g.page.close()
 
     seqs = set()
@@ -77,8 +77,4 @@ with server() as port, sync_playwright() as p:
     g.page.evaluate("(() => { localStorage.setItem = () => { throw new Error('quota') }; return 1 })()")
     g.page.tap('#stopBtn'); g.page.wait_for_selector('#summary:not(.hidden)')
     check('stopped run + save failure shown', g.ev('window.__pf.S.record.ended') == 'stopped' and 'could not be saved' in g.page.inner_text('#status'))
-    g.page.close()
-    b.close()
-errors = [e for e in errors if 'localStorage save failed' not in e]  # forced on purpose above
-check('no console errors', not errors, errors[:5])
-sys.exit(check.report())
+    finish(check, b, errors, ignore=('localStorage save failed',))  # the save failure is forced on purpose above

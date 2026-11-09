@@ -31,7 +31,8 @@ with server() as port, sync_playwright() as p:
     page.fill('#notes', 'bot note, with comma')
     page.tap('#copyRow'); page.wait_for_timeout(300)
     cols = page.evaluate('navigator.clipboard.readText()').split('\t'); ncol = page.evaluate('window.__pf.COLS.length')
-    check('copied TSV row has all columns', len(cols) == ncol and cols[-1] == 'bot note, with comma', len(cols))
+    names = [c[0] for c in page.evaluate('window.__pf.COLS')]
+    check('copied TSV row has all columns', len(cols) == ncol and cols[names.index('notes')] == 'bot note, with comma', len(cols))
     page.tap('#copyHead'); page.wait_for_timeout(200)
     head = page.evaluate('navigator.clipboard.readText()').split('\t')
     check('copy column headers', len(head) == ncol and head[0] == 'run_id')
@@ -42,7 +43,7 @@ with server() as port, sync_playwright() as p:
         page.click('#summary .dlJson')
     d2.value.save_as(f'{OUT}/{level}-runs.json')
     rows = list(csv.reader(io.open(f'{OUT}/{level}-runs.csv', newline=''))); nruns = page.evaluate('window.__pf.runs.length')
-    check('CSV has header + one row per run', len(rows) == nruns + 1 and rows[-1][-1] == 'bot note, with comma')
+    check('CSV has header + one row per run', len(rows) == nruns + 1 and rows[-1][rows[0].index('notes')] == 'bot note, with comma')
     js = json.load(open(f'{OUT}/{level}-runs.json'))
     check('JSON has runs with events', len(js['runs']) == nruns and len(js['runs'][-1]['events']) > 10)
     page.tap('#backBtn')

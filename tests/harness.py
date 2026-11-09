@@ -7,6 +7,20 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 BOT = open(os.path.join(HERE, 'bot.js')).read()
 
 
+def finish(check, browser, errors, ignore=()):
+    """Report results first, then close the browser; Chrome occasionally hangs on close, so exit anyway after 15 s."""
+    import threading
+    errs = [e for e in errors if not any(x in e for x in ignore)]
+    check('no console errors', not errs, errs[:5])
+    code = check.report()
+    sys.stdout.flush()
+    threading.Timer(15, lambda: os._exit(code)).start()
+    try:
+        browser.close()
+    finally:
+        os._exit(code)
+
+
 @contextmanager
 def server():
     s = socket.socket(); s.bind(('127.0.0.1', 0)); port = s.getsockname()[1]; s.close()
@@ -25,6 +39,7 @@ class Checks:
 
     def __call__(self, name, ok, info=''):
         self.items[name] = {'ok': bool(ok), 'info': info}
+        print('CHECK', 'ok ' if ok else 'FAIL', name, file=sys.stderr, flush=True)
 
     def report(self):
         print(json.dumps(self.items, indent=1, default=str))
