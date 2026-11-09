@@ -34,7 +34,7 @@
     "_help": "What each station accepts. Keys = what is on the station now ('empty', or an item); values = items allowed on top. Items: flatbread:raw, flatbread:baked, flatbread:burnt, pepper, mushroom, sorbet, drizzle, dish:pepper, dish:mushroom, dish:sorbet. '*' = anything. A key '*' covers any occupied state (the new item then replaces the old one).",
     "plate":   { "empty": ["flatbread:baked", "pepper", "mushroom"], "flatbread:baked": ["pepper", "mushroom"],
                  "pepper": ["flatbread:baked"], "mushroom": ["flatbread:baked"] },
-    "bowl":    { "empty": ["sorbet"], "sorbet": ["drizzle"] },
+    "bowl":    { "empty": ["sorbet", "drizzle"], "sorbet": ["drizzle"], "drizzle": ["sorbet"] },
     "grill":   { "empty": ["flatbread:raw", "flatbread:baked"], "*": ["flatbread:raw", "flatbread:baked"] },
     "storage": { "empty": ["*"], "*": ["*"] },
     "trash":   { "empty": ["*"] }
