@@ -21,6 +21,7 @@
     "bakeSec": 6,
     "glowAfterDoneSec": 8,
     "burnAfterDoneSec": 12,
+    "burnWarningSec": 3,
     "fallSpeedKHPerGravity": 1.25,
     "fallAccelSec": 0.2,
     "maxUsefulWaitSec": 6,
@@ -32,11 +33,12 @@
   },
   "placement": {
     "_help": "What each station accepts. Keys = what is on the station now ('empty', or an item); values = items allowed on top. Items: flatbread:raw, flatbread:baked, flatbread:burnt, pepper, mushroom, sorbet, drizzle, dish:pepper, dish:mushroom, dish:sorbet. '*' = anything. A key '*' covers any occupied state (the new item then replaces the old one).",
-    "plate":   { "empty": ["flatbread:baked", "pepper", "mushroom"], "flatbread:baked": ["pepper", "mushroom"],
+    "plate":   { "empty": ["flatbread:baked", "pepper", "mushroom", "dish:pepper", "dish:mushroom"], "flatbread:baked": ["pepper", "mushroom"],
                  "pepper": ["flatbread:baked"], "mushroom": ["flatbread:baked"] },
-    "bowl":    { "empty": ["sorbet", "drizzle"], "sorbet": ["drizzle"], "drizzle": ["sorbet"] },
+    "bowl":    { "empty": ["sorbet", "drizzle", "dish:sorbet"], "sorbet": ["drizzle"], "drizzle": ["sorbet"] },
     "grill":   { "empty": ["flatbread:raw", "flatbread:baked"], "*": ["flatbread:raw", "flatbread:baked"] },
-    "storage": { "empty": ["*"], "*": ["*"] },
+    "storage": { "empty": ["flatbread:raw", "flatbread:baked", "pepper", "mushroom", "sorbet", "drizzle", "dish:pepper", "dish:mushroom", "dish:sorbet"],
+                 "*":     ["flatbread:raw", "flatbread:baked", "pepper", "mushroom", "sorbet", "drizzle", "dish:pepper", "dish:mushroom", "dish:sorbet"] },
     "trash":   { "empty": ["*"] }
   },
   "layout": {
@@ -936,15 +938,6 @@ function step(dt) {
     const b = S.bubbles[i]; b.y += bv * dt;
     if (b.y - L.bubbleR > H) { S.bubbles.splice(i, 1); S.missed++; log('bubble_missed', { ing: b.ing, lane: b.lane + 1 }); }
   }
-  // Refused items hover through the feedback, then join the normal falling items.
-  const now = performance.now();
-  for (let i = S.hovering.length - 1; i >= 0; i--) {
-    const f = S.hovering[i];
-    if (now >= f.fallAt) {
-      S.hovering.splice(i, 1);
-      S.falling.push(f);
-    }
-  }
   // falling items
   const vmax = S.lv.gravity * C.fallSpeedKHPerGravity * H;
   for (let i = S.falling.length - 1; i >= 0; i--) {
@@ -1034,11 +1027,11 @@ function popOff(old, it, at, on) {
   log('item_replaced', { old: describe(old), by: describe(it), on });
 }
 
-// Let the refusal feedback play before the item falls.
+// A refused item does not fall: it hovers where it was let go until touched again; the station shakes red.
 function refuse(it, p, station) {
   S.wrongPlace++;
   const until = performance.now() + 300;
-  S.hovering.push({ item: it, x: p.x, y: p.y - 20, age: 0, fallAt: until });
+  S.hovering.push({ item: it, x: p.x, y: p.y - 20, age: 0 });
   S.shake = { station, until };
   log('wrong_placement', { item: describe(it), station, level: S.levelId });
   SND.play('sfx_wrong_place');
@@ -1251,6 +1244,17 @@ function drawCounter() {
   ctx.stroke();
 }
 
+// Yellow warning triangle, pulsing, shown in the last seconds before a flatbread burns.
+function drawWarnSign(x, y) {
+  const k = 1 + 0.12 * Math.sin(performance.now() / 90), r = 24 * k;
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 8;
+  ctx.fillStyle = '#ffd400'; ctx.strokeStyle = '#1d1a24'; ctx.lineWidth = 4; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r * 1.05, y + r * 0.8); ctx.lineTo(x - r * 1.05, y + r * 0.8); ctx.closePath();
+  ctx.fill(); ctx.shadowBlur = 0; ctx.stroke();
+  txt('!', x, y + r * 0.18, 30 * k, '#1d1a24', 'center', 900);
+  ctx.restore();
+}
 function drawGrill(st) {
   const shk = shakeOf('grill'); ctx.save(); if (shk) ctx.translate(shk.dx, 0);
   ctx.fillStyle = 'rgba(40,10,80,0.25)'; poly(L.grillPoly.map(q => ({ x: q.x + 6, y: q.y + 8 }))); ctx.fill();
@@ -1281,7 +1285,7 @@ function drawGrill(st) {
     else { frac = 1; col = '#000'; }
     ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, 54, 40, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = col; ctx.beginPath(); ctx.ellipse(p.x, p.y, 54, 40, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, frac)); ctx.stroke();
-    if (it.st === 'baked' && it.over >= C.glowAfterDoneSec) txt('!', p.x + 50, p.y - 38, 34, '#fff');
+    if (it.st === 'baked' && it.over >= C.burnAfterDoneSec - (C.burnWarningSec ?? 3)) drawWarnSign(p.x + 54, p.y - 52);
   });
   if (shk) { ctx.fillStyle = `rgba(255,40,40,${shk.a})`; poly(L.grillPoly); ctx.fill(); }
   ctx.restore();
@@ -1443,7 +1447,7 @@ function render() {
   if (!S) return;
   for (const b of S.bubbles) { drawGlassBubble(b.x, b.y, b.ing); drawItem(makeItemView(b.ing), b.x, b.y, 0.85); }
   for (const f of S.falling) drawItem(f.item, f.x, f.y, 1);
-  for (const f of S.hovering) {  // refused items bob briefly before falling
+  for (const f of S.hovering) {  // refused items float, bobbing gently, until picked up again
     const bob = Math.sin(performance.now() / 250 + f.x) * 4;
     ctx.fillStyle = 'rgba(30,10,60,0.25)'; ell(f.x, f.y + 34, 26, 7); ctx.fill();
     drawItem(f.item, f.x, f.y + bob, 1);
