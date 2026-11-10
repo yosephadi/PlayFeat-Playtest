@@ -37,7 +37,7 @@ with server() as port, sync_playwright() as p:
 
     # set up a frozen-state snapshot just before the round end: grill item, a mid-drag item
     g.ev("(() => { const S = window.__pf.S; S.t = 88.5; S.grill[0] = {id: 77, t: 'flatbread', st: 'raw', bake: 1, over: 0}; "
-         "S.hovering.push({ item: {id: 78, t: 'pepper'}, x: 200, y: 330, age: 0 }); window.__pf.R.coins = 40; return 1 })()")
+         "S.hovering.push({ item: {id: 78, t: 'pepper'}, x: 200, y: 330, age: 0 }); window.__pf.R.coins = 45; return 1 })()")
     c = g.client({'x': 200, 'y': 330})
     g.cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': c['x'], 'y': c['y'], 'id': 1}]})  # held, not released
     check('item is being dragged before the round ends', g.ev('!!window.__pf.S.held'))
@@ -55,21 +55,23 @@ with server() as port, sync_playwright() as p:
     g.cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
     check('bake loop is silent during the break', g.ev("window.__pf.soundLog.filter(s => s.id === 'sfx_bake_loop').slice(-1)[0].note") == 'loop stop')
 
-    # break 1: offers, buy two cards in a row, bought card locked, unaffordable greyed, score/tips untouched
+    # break 1: one card per break. 45 coins: Grill I (40) and Pepper (35) affordable, Cozy (50) not
     offer = g.ev(f"{R}.offer")
     check('break 1 offers Faster Grill I, Blazing Ember Pepper, Cozy Seats', offer == ['grill1', 'pepper', 'cozy'], offer)
+    check('a card that costs more than the coins is greyed out and cannot be bought', g.page.locator('#brkCards button[data-card="cozy"]').is_disabled()
+          and 'cant' in g.page.get_attribute('#brkCards button[data-card="cozy"]', 'class') and not g.ev("window.__pf.buyCard('cozy')") and g.ev(f"{R}.coins") == 45)
     st0 = g.ev("({score: window.__pf.S.score, tips: window.__pf.S.tips})")
     g.page.click('#brkCards button[data-card="grill1"]')
-    c1 = g.ev(f"{R}.coins")
-    g.page.click('#brkCards button[data-card="pepper"]')
-    c2 = g.ev(f"{R}.coins")
-    check('two purchases in one break: coins drop twice (40 -> 20 -> 5)', (c1, c2) == (20, 5), (c1, c2))
-    check('a bought card shows "Bought" and cannot be bought again', g.page.locator('#brkCards button[data-card="grill1"]').is_disabled()
-          and 'Bought' in g.page.inner_text('#brkCards button[data-card="grill1"]') and not g.ev("window.__pf.buyCard('grill1')") and g.ev(f"{R}.coins") == 5)
-    check('a card that costs more than the coins left is greyed out', g.page.locator('#brkCards button[data-card="cozy"]').is_disabled()
-          and 'cant' in g.page.get_attribute('#brkCards button[data-card="cozy"]', 'class') and not g.ev("window.__pf.buyCard('cozy')"))
+    check('buying Faster Grill I costs 40 (45 -> 5)', g.ev(f"{R}.coins") == 5)
+    check('the bought card shows "Bought"', 'Bought' in g.page.inner_text('#brkCards button[data-card="grill1"]'))
+    g.ev(f"(() => {{ {R}.coins = 500; window.__pf.renderBreak(); return 1 }})()")  # even with plenty of coins...
+    locked = [g.page.locator(f'#brkCards button[data-card="{c}"]').is_disabled() and 'locked' in g.page.get_attribute(f'#brkCards button[data-card="{c}"]', 'class') for c in ('pepper', 'cozy')]
+    check('after 1 card the other 2 are greyed out ("One card per break") and cannot be bought',
+          all(locked) and 'One card per break' in g.page.inner_text('#brkCards button[data-card="pepper"]')
+          and not g.ev("window.__pf.buyCard('pepper')") and not g.ev("window.__pf.buyCard('cozy')") and g.ev(f"{R}.coins") == 500, locked)
+    g.ev(f"(() => {{ {R}.coins = 5; window.__pf.renderBreak(); return 1 }})()")
     st1 = g.ev("({score: window.__pf.S.score, tips: window.__pf.S.tips})")
-    check('spending coins does not change score or tips', st0 == st1, (st0, st1))
+    check('buying a card does not change score or tips', st0 == st1, (st0, st1))
     check('coin count shown on the break screen', g.page.inner_text('#brkCoins') == '5')
     g.page.screenshot(path=f'{OUT}/rounds-break1.png')
     g.page.tap('#brkDone')
@@ -83,7 +85,7 @@ with server() as port, sync_playwright() as p:
     placed = [e['t'] for e in g.ev('window.__pf.S.events') if e['e'] == 'item_placed' and e['on'] == 'grill'][-1]
     ready = [s['t'] for s in g.ev('window.__pf.soundLog') if s['id'] == 'sfx_bake_ready'][-1]
     check('after Faster Grill I the next flatbread bakes in 4.5 s', abs((ready - placed) - 4.5) < 0.1, (placed, ready))
-    check('Blazing Ember Pepper: Pepper Flatbread now worth 25', g.ev("window.__pf.R.values.pepper") == 15)
+    check('Pepper was not bought: still worth 10', g.ev("window.__pf.R.values.pepper") == 10)
 
     # storage unlock at 6 and 14 dishes
     g.ev("(() => { window.__pf.S.served = 5; return 1 })()")
@@ -103,8 +105,41 @@ with server() as port, sync_playwright() as p:
     g.page.wait_for_selector('#breakOv:not(.hidden)', timeout=30000)
     offer2 = g.ev(f"{R}.offer")
     check('break 2 offers Second Grill Spot, Royal Dusk Mushroom, Faster Grill II', offer2 == ['grillspot', 'mushroom', 'grill2'], offer2)
+    coins2 = g.ev(f"{R}.coins")
     g.page.wait_for_selector('#breakOv.hidden', state='attached', timeout=10000)
     check('break 2 times out and play continues', g.ev(f"{R}.round === 3"))
+    check('skipping keeps the coins', g.ev(f"{R}.coins") == coins2 and g.ev(f"{R}.breakLog[1]") == {'break': 2, 'pick': 'skip', 'coinsBefore': coins2, 'coinsAfter': coins2}, g.ev(f"{R}.breakLog"))
+    g.ev(f"(() => {{ window.__pf.S.t = {R}.roundEndAt - 0.3; return 1 }})()")  # jump to the end of round 3
+    g.page.wait_for_selector('#breakOv:not(.hidden)', timeout=10000)
+    check('saved coins are available at the next break', g.ev(f"{R}.coinsAtBreakStart") == coins2 == g.ev(f"{R}.coins") and g.page.inner_text('#brkCoins') == str(coins2))
+    g.page.tap('#brkDone')
+
+    # every card applies its configured value, never past its limit (direct buyCard on a fresh copy of the state, then restored)
+    res = g.ev(f"""(() => {{
+      const R = {R}, P = window.__pf, S = P.S, keep = JSON.stringify(R), nEv = S.events.length, grill = S.grill.length, out = {{}};
+      const fresh = (id, needs) => {{ Object.assign(R, JSON.parse(keep)); R.inBreak = true; R.offer = [id]; R.boughtThisBreak = []; R.owned = needs ? [{{id: needs}}] : []; R.coins = 999; R.bakeSec = 6; R.patienceMult = 1; }};
+      for (const c of P.CFG.marathonRounds.cards) {{
+        fresh(c.id, c.needs); const ok = P.buyCard(c.id);
+        out[c.id] = {{ ok, bake: R.bakeSec, pm: R.patienceMult, grill: S.grill.length, values: Object.assign({{}}, R.values) }};
+        S.grill.length = grill;
+      }}
+      // limits: a config that tries to go past them is clamped
+      const g2 = P.CFG.marathonRounds.cards.find(c => c.id === 'grill2'), cz = P.CFG.marathonRounds.cards.find(c => c.id === 'cozy');
+      const b0 = g2.apply.bakeSec, p0 = cz.apply.patienceMult; g2.apply.bakeSec = 1; cz.apply.patienceMult = 3;
+      fresh('grill2', 'grill1'); P.buyCard('grill2'); out.clampBake = R.bakeSec;
+      fresh('cozy'); P.buyCard('cozy'); out.clampPm = R.patienceMult;
+      g2.apply.bakeSec = b0; cz.apply.patienceMult = p0;
+      Object.assign(R, JSON.parse(keep)); S.events.length = nEv; return out; }})()""")
+    v = lambda c, k: res[c]['values'][k]
+    check('Faster Grill I: bake 4.5 s; Faster Grill II: bake 3.0 s', res['grill1']['bake'] == 4.5 and res['grill2']['bake'] == 3.0, (res['grill1'], res['grill2']))
+    check('Second Grill Spot: 2 grill spots', res['grillspot']['grill'] == 2)
+    check('Cozy Seats: patience x1.2 for new arrivals', res['cozy']['pm'] == 1.2)
+    check('ingredient cards: pepper 18, mushroom 24, sorbet 17, drizzle 12, flatbread 16',
+          (v('pepper', 'pepper'), v('mushroom', 'mushroom'), v('sorbet', 'sorbet'), v('drizzle', 'drizzle'), v('flatbread', 'flatbread')) == (18, 24, 17, 12, 16))
+    check('all 9 cards can be bought with enough coins', all(res[c]['ok'] for c in ('grill1', 'grill2', 'grillspot', 'cozy', 'pepper', 'mushroom', 'sorbet', 'drizzle', 'flatbread')))
+    check('limits: bake never below 3.0 s, patience never above x1.2, even if the config asks for more', res['clampBake'] == 3.0 and res['clampPm'] == 1.2, (res['clampBake'], res['clampPm']))
+    prices = {c['id']: c['price'] for c in g.ev('window.__pf.CFG.marathonRounds.cards')}
+    check('prices from the config', prices == {'grill1': 40, 'grill2': 60, 'grillspot': 65, 'cozy': 50, 'pepper': 35, 'mushroom': 30, 'sorbet': 25, 'drizzle': 25, 'flatbread': 45}, prices)
 
     # offer logic for later breaks (pure function, with owned cards set directly, then restored)
     g.ev(f"(() => {{ window.__savedOwned = {R}.owned.slice(); return 1 }})()")
@@ -124,12 +159,12 @@ with server() as port, sync_playwright() as p:
     check('final score = dish points - 10 per lost (not reduced by spending)', rec['score'] == max(0, sum(e['points'] for e in served) - 10 * rec['customersLost']) or rec['score'] >= 0)
     check('total = score + tips', rec['total'] == rec['score'] + rec['tips'])
     names = {e['e'] for e in ev}
-    for n in ['round_end', 'break_start', 'card_offered', 'card_picked', 'break_done', 'break_timeout', 'storage_unlocked']:
+    for n in ['round_end', 'break_start', 'card_offered', 'card_picked', 'break_done', 'break_timeout', 'break_skipped', 'storage_unlocked']:
         check(f'log event {n}', n in names)
     cp = [e for e in ev if e['e'] == 'card_picked']
-    check('card_picked has id, price, coins before/after (one row per purchase)', len(cp) == 2 and all({'id', 'price', 'coinsBefore', 'coinsAfter'} <= set(e) for e in cp))
+    check('card_picked has id, price, coins before/after (one row per purchase)', len(cp) == 1 and all({'id', 'price', 'coinsBefore', 'coinsAfter'} <= set(e) for e in cp))
     check('summary: mode, rounds, cards, bake time, coins, times, dishes per break, lost per round',
-          rec['mode'] == 'marathon_rounds' and rec['roundsCompleted'] >= 2 and rec['cardsBought'] == 'grill1@break1; pepper@break1'
+          rec['mode'] == 'marathon_rounds' and rec['roundsCompleted'] >= 2 and rec['cardsBought'] == 'grill1@break1'
           and rec['finalBakeSec'] == 4.5 and rec['breakTimeSec'] > 0 and abs(rec['totalTimeSec'] - rec['playTimeSec'] - rec['breakTimeSec']) < 0.2
           and len(rec['dishesAtBreaks'].split(';')) == rec['roundsCompleted'], {k: rec.get(k) for k in ('mode', 'roundsCompleted', 'cardsBought', 'finalBakeSec', 'coinsUnspent', 'playTimeSec', 'breakTimeSec', 'totalTimeSec', 'dishesAtBreaks', 'lostPerRound')})
     page = g.page
@@ -138,7 +173,9 @@ with server() as port, sync_playwright() as p:
     row = page.evaluate('navigator.clipboard.readText()').split('\t'); cols = [c[0] for c in page.evaluate('window.__pf.COLS')]
     i0 = cols.index('mode')
     check('copied row has the Marathon Rounds fields after the old ones', len(row) == len(cols) and i0 == 22 and cols[i0:i0 + 10] == ['mode','rounds_completed', 'cards_bought', 'final_bake_s', 'coins_unspent', 'play_time_s', 'break_time_s', 'total_time_s', 'dishes_at_breaks', 'lost_per_round']
-          and row[cols.index('mode')] == 'marathon_rounds' and row[cols.index('cards_bought')] == 'grill1@break1; pepper@break1')
+          and row[cols.index('mode')] == 'marathon_rounds' and row[cols.index('cards_bought')] == 'grill1@break1')
+    check('row: card per break and coins before>after each break', row[cols.index('break_picks')] == 'grill1 | skip | skip'
+          and row[cols.index('break_coins')] == f'45>5 | {coins2}>{coins2} | {coins2}>{coins2}', (row[cols.index('break_picks')], row[cols.index('break_coins')]))
     with page.expect_download() as d:
         page.click('#summary .dlCsv')
     d.value.save_as(f'{OUT}/rounds.csv')
