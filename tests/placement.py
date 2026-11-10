@@ -1,4 +1,4 @@
-"""Every item x every station state: accepted items are placed, refused ones hover until picked up, and each refusal logs
+"""Every item x every station state: accepted items are placed, refused ones are held briefly (then fall; see refuse.py), and each refusal logs
 wrong_placement + plays sfx_wrong_place. Expected results are written out here from the rule (not read from CFG).
 Usage: placement.py"""
 import sys
@@ -78,9 +78,6 @@ with server() as port, sync_playwright() as p:
                     and 'sfx_wrong_place' in st['snd'] and st['shake'] == STATION_NAME[station]
             results.append((station, start or 'empty', item, 'accept' if want_ok else 'refuse', ok))
             check(f'{station} [{start or "empty"}] + {item} -> {"placed" if want_ok else "refused"}', ok, st if not ok else '')
-            if (station, start, item) == ('plate', None, 'sorbet'):
-                g.page.wait_for_timeout(1200)
-                check('refused item still hovers after 1 s (does not fall)', g.ev("window.__pf.S.hovering.length === 1 && !window.__pf.S.falling.length"))
     # the summary counts wrong placements
     g.tap(K['pause']); g.page.wait_for_timeout(150); g.page.tap('#stopBtn'); g.page.wait_for_selector('#summary:not(.hidden)')
     rec = g.ev('window.__pf.S.record')

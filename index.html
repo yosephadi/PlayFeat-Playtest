@@ -22,6 +22,7 @@
     "glowAfterDoneSec": 8,
     "burnAfterDoneSec": 12,
     "burnWarningSec": 3,
+    "refuseHoldMs": 300,
     "fallSpeedKHPerGravity": 1.25,
     "fallAccelSec": 0.2,
     "maxUsefulWaitSec": 6,
@@ -1099,6 +1100,11 @@ function step(dt) {
     const b = S.bubbles[i]; b.y += bv * dt;
     if (b.y - L.bubbleR > H) { S.bubbles.splice(i, 1); S.missed++; log('bubble_missed', { ing: b.ing, lane: b.lane + 1 }); }
   }
+  // refused items: after the hold they join the normal falling items (same gravity, catchable, vanish at the bottom)
+  for (let i = S.hovering.length - 1; i >= 0; i--) {
+    const h = S.hovering[i];
+    if (inRefuseHold(h) && S.t >= h.releaseAt) { S.hovering.splice(i, 1); S.falling.push({ item: h.item, x: h.x, y: h.y, age: 0 }); }
+  }
   // falling items
   const vmax = S.lv.gravity * C.fallSpeedKHPerGravity * H;
   for (let i = S.falling.length - 1; i >= 0; i--) {
@@ -1162,7 +1168,8 @@ function pickupAt(p) {
   let best = -1, bd = 1e9;
   S.falling.forEach((f, i) => { const d = dist(p, f); if (d < L.itemR + 24 && d < bd) { bd = d; best = i; } });
   if (best >= 0) { const f = S.falling.splice(best, 1)[0]; log('item_caught_midair', { item: describe(f.item) }); return { item: f.item, fromBubble: false }; }
-  S.hovering.forEach((f, i) => { const d = dist(p, f); if (d < L.itemR + 24 && (best < 0 || d < bd)) { bd = d; best = i; } });
+  if (S.hovering.some(h => inRefuseHold(h) && dist(p, h) < L.itemR + 24)) return null;  // still in its refusal hold
+  S.hovering.forEach((f, i) => { const d = dist(p, f); if (!inRefuseHold(f) && d < L.itemR + 24 && (best < 0 || d < bd)) { bd = d; best = i; } });
   if (best >= 0) { const f = S.hovering.splice(best, 1)[0]; log('item_picked_up_hovering', { item: describe(f.item) }); return { item: f.item, fromBubble: false }; }
   const tryBubbles = () => {
     let bi = -1, bdd = 1e9;
@@ -1190,12 +1197,15 @@ function popOff(old, it, at, on) {
   log('item_replaced', { old: describe(old), by: describe(it), on });
 }
 
-// A refused item does not fall: it hovers where it was let go until touched again; the station shakes red.
+// A refused item is held where it was let go for refuseHoldMs (game time, so pause/breaks freeze it; it can't be
+// grabbed and the station takes no other drop), then it falls like any dropped item. The station shakes red.
+const REFUSE_HOLD = () => (C.refuseHoldMs ?? 300) / 1000;
+const inRefuseHold = h => h.releaseAt != null;
+const stationBusy = station => S.hovering.some(h => inRefuseHold(h) && h.station === station);
 function refuse(it, p, station) {
   S.wrongPlace++;
-  const until = performance.now() + 300;
-  S.hovering.push({ item: it, x: p.x, y: p.y - 20, age: 0 });
-  S.shake = { station, until };
+  S.hovering.push({ item: it, x: p.x, y: p.y - 20, age: 0, releaseAt: S.t + REFUSE_HOLD(), station });
+  S.shake = { station, until: performance.now() + REFUSE_HOLD() * 1000 };
   log('wrong_placement', { item: describe(it), station, level: S.levelId });
   SND.play('sfx_wrong_place');
 }
@@ -1216,7 +1226,7 @@ function drop(p) {
   if (si >= 0 && S.seated[si] && it.t === 'dish') { serve(S.seated[si], it); return; }
   // trash
   if (inPoly(p, L.trashPoly, 14)) {
-    if (!canPlace('trash', null, it)) return refuse(it, p, 'trash');
+    if (stationBusy('trash') || !canPlace('trash', null, it)) return refuse(it, p, 'trash');
     S.trashed++; log('item_thrown_away', { item: describe(it) }); SND.play('sfx_trash');
     addFloat('\u{1F5D1}', L.trashC.x, L.trashC.y - 30, '#fff', 30);
     return;
@@ -1226,18 +1236,18 @@ function drop(p) {
     let gi = -1, gd = 1e9;
     S.grill.forEach((g, i) => { if (!g) { const d = dist(p, grillSlotPos(i)); if (d < gd) { gd = d; gi = i; } } });
     if (gi >= 0) {
-      if (!canPlace('grill', null, it)) return refuse(it, p, 'grill');
+      if (stationBusy('grill') || !canPlace('grill', null, it)) return refuse(it, p, 'grill');
       S.grill[gi] = it; log('item_placed', { item: describe(it), on: 'grill' }); SND.play('sfx_place'); return;
     }
     S.grill.forEach((g, i) => { const d = dist(p, grillSlotPos(i)); if (gi < 0 || d < gd) { gd = d; gi = i; } });
-    if (!canPlace('grill', S.grill[gi], it)) return refuse(it, p, 'grill');
+    if (stationBusy('grill') || !canPlace('grill', S.grill[gi], it)) return refuse(it, p, 'grill');
     const old = S.grill[gi]; S.grill[gi] = it; popOff(old, it, grillSlotPos(gi), 'grill'); SND.play('sfx_place'); return;
   }
   // plate / bowl
   for (const v of vessels()) {
     if (!inEll(p, v.e)) continue;
     const cur = v.get();
-    if (!canPlace(v.kind, cur, it)) return refuse(it, p, v.name);
+    if (stationBusy(v.name) || !canPlace(v.kind, cur, it)) return refuse(it, p, v.name);
     const res = combine(v.kind, cur, it);
     if (res) {
       v.set(res); SND.play('sfx_place');
@@ -1250,7 +1260,7 @@ function drop(p) {
   for (let i = 0; i < S.storage.length && i < L.storage.length; i++) {
     if (!inPoly(p, L.storage[i], 14)) continue;
     const old = S.storage[i];
-    if (!canPlace('storage', old, it)) return refuse(it, p, 'storage' + (i + 1));
+    if (stationBusy('storage' + (i + 1)) || !canPlace('storage', old, it)) return refuse(it, p, 'storage' + (i + 1));
     S.storage[i] = it; log('item_stored', { item: describe(it), slot: i + 1 }); SND.play('sfx_place');
     if (old) popOff(old, it, boxCenter(i), 'storage' + (i + 1));
     return;
@@ -1641,7 +1651,7 @@ function render() {
   if (!S) return;
   for (const b of S.bubbles) { drawGlassBubble(b.x, b.y, b.ing); drawItem(makeItemView(b.ing), b.x, b.y, 0.85); }
   for (const f of S.falling) drawItem(f.item, f.x, f.y, 1);
-  for (const f of S.hovering) {  // refused items float, bobbing gently, until picked up again
+  for (const f of S.hovering) {  // refused items during their short hold (and a drag cancelled at a round end)
     const bob = Math.sin(performance.now() / 250 + f.x) * 4;
     ctx.fillStyle = 'rgba(30,10,60,0.25)'; ell(f.x, f.y + 34, 26, 7); ctx.fill();
     drawItem(f.item, f.x, f.y + bob, 1);
