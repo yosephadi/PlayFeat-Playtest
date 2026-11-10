@@ -65,8 +65,10 @@ class Game:
         page.goto(f'http://127.0.0.1:{port}/index.html?speed={speed}{query}')
         self.cdp = ctx.new_cdp_session(page)
 
-    def start(self, level, tester='bot'):
+    def start(self, level, tester='bot', flow=None):
         self.page.tap(f'button.lv[data-level="{level}"]')
+        if flow:
+            self.page.tap(f'button.fl[data-flow="{flow}"]')
         self.page.fill('#tester', tester)
         self.page.tap('#startBtn')
         self.page.wait_for_function('window.__pf.S && window.__pf.S.t > 0.05')

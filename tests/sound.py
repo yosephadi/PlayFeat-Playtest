@@ -90,7 +90,7 @@ with server() as port, sync_playwright() as p:
 
     # C) idle Day 4: angry arrivals, customers leaving (-10), last-10-seconds ticks, day end, no stars
     g = Game(ctx, port, errors, speed=12)
-    g.start('1-4')
+    g.start('1-4', flow='schedule')
     g.page.wait_for_selector('#summary:not(.hidden)', timeout=60000)
     g.page.wait_for_timeout(2600)
     snd, ev = g.ev(LOG), g.ev(EV)
@@ -123,7 +123,7 @@ with server() as port, sync_playwright() as p:
     g = Game(ctx, port, errors, speed=3)
     g.page.tap('#muteBtn')
     g.page.reload()
-    g.start('1-1')
+    g.start('1-1', flow='schedule')
     g.bot_play()
     g.page.wait_for_selector('#summary:not(.hidden)')
     rec = g.ev('window.__pf.S.record')

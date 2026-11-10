@@ -136,13 +136,14 @@ with server() as port, sync_playwright() as p:
     page.screenshot(path=f'{OUT}/rounds-summary.png')
     page.tap('#copyRow'); page.wait_for_timeout(300)
     row = page.evaluate('navigator.clipboard.readText()').split('\t'); cols = [c[0] for c in page.evaluate('window.__pf.COLS')]
-    check('copied row ends with the new fields', len(row) == len(cols) and cols[-10:] == ['mode', 'rounds_completed', 'cards_bought', 'final_bake_s', 'coins_unspent', 'play_time_s', 'break_time_s', 'total_time_s', 'dishes_at_breaks', 'lost_per_round']
+    i0 = cols.index('mode')
+    check('copied row has the Marathon Rounds fields after the old ones', len(row) == len(cols) and i0 == 22 and cols[i0:i0 + 10] == ['mode','rounds_completed', 'cards_bought', 'final_bake_s', 'coins_unspent', 'play_time_s', 'break_time_s', 'total_time_s', 'dishes_at_breaks', 'lost_per_round']
           and row[cols.index('mode')] == 'marathon_rounds' and row[cols.index('cards_bought')] == 'grill1@break1; pepper@break1')
     with page.expect_download() as d:
         page.click('#summary .dlCsv')
     d.value.save_as(f'{OUT}/rounds.csv')
     rows = list(csv.reader(io.open(f'{OUT}/rounds.csv', newline='')))
-    check('CSV keeps old columns and adds the new ones at the end', rows[0][:22] == cols[:22] and rows[0][-1] == 'lost_per_round' and rows[-1][rows[0].index('mode')] == 'marathon_rounds')
+    check('CSV keeps old columns and adds the new ones at the end', rows[0] == cols and rows[-1][rows[0].index('mode')] == 'marathon_rounds')
     with page.expect_download() as d2:
         page.click('#summary .dlJson')
     d2.value.save_as(f'{OUT}/rounds.json')

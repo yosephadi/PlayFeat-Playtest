@@ -8,6 +8,11 @@
   Dish points = sum of ingredient values. Must stay valid JSON.
   layout.laneX = x position of each bubble lane (screen is 1024 wide; orders sit at x 680-830).
   layout.glassBlurSamples = bubble see-through sharpness (lower = blurrier).
+  Story days, customerFlow ("refill" or "schedule", the panel toggle overrides it):
+    schedule = customers arrive at the fixed times in "customers" (random orders drawn from "orderPool" COUNTS).
+    refill   = settings in "refill": counterSpots customers at most; when a spot frees, the next customer steps up
+               after refillDelaySec; customer 1 orders firstOrder, customer N in angryAt (counted from 1) is angry
+               and orders sorbet; everyone else draws from refill.orderPool WEIGHTS. No new customers after durationSec.
 ====================================================================== -->
 <script id="pf-config" type="application/json">
 {
@@ -61,6 +66,9 @@
   "levels": {
     "1-1": {
       "name": "First Sale",
+      "customerFlow": "refill",
+      "refill": { "counterSpots": 1, "refillDelaySec": 2, "firstOrder": "pepper", "orderPool": { "pepper": 1 },
+                  "angryAt": [], "patienceSec": 45, "angryPatienceSec": 25 },
       "gravity": 0.4, "bubbleLifeSec": 6, "bubbleEverySec": 3, "usefulBubbleShare": 0.8,
       "maxWaiting": 2, "stars": [20, 40, 60],
       "pool": ["flatbread", "pepper", "mushroom"],
@@ -83,6 +91,9 @@
     },
     "1-2": {
       "name": "Two Toppings",
+      "customerFlow": "refill",
+      "refill": { "counterSpots": 2, "refillDelaySec": 2, "firstOrder": "pepper", "orderPool": { "pepper": 1, "mushroom": 1 },
+                  "angryAt": [], "patienceSec": 40, "angryPatienceSec": 25 },
       "gravity": 0.5, "bubbleLifeSec": 5, "bubbleEverySec": 2.5, "usefulBubbleShare": 0.65,
       "maxWaiting": 2, "stars": [20, 45, 65],
       "pool": ["flatbread", "pepper", "mushroom"],
@@ -101,6 +112,9 @@
     },
     "1-3": {
       "name": "The Angry Alien",
+      "customerFlow": "refill",
+      "refill": { "counterSpots": 3, "refillDelaySec": 2, "firstOrder": "pepper", "orderPool": { "pepper": 1, "mushroom": 1, "sorbet": 1 },
+                  "angryAt": [4], "patienceSec": 35, "angryPatienceSec": 25 },
       "gravity": 0.6, "bubbleLifeSec": 4, "bubbleEverySec": 2, "usefulBubbleShare": 0.6,
       "maxWaiting": 3, "stars": [35, 60, 75],
       "pool": ["flatbread", "pepper", "mushroom", "sorbet", "drizzle"],
@@ -120,6 +134,9 @@
     },
     "1-4": {
       "name": "Double Trouble",
+      "customerFlow": "refill",
+      "refill": { "counterSpots": 3, "refillDelaySec": 2, "firstOrder": "pepper", "orderPool": { "pepper": 1, "mushroom": 1, "sorbet": 1 },
+                  "angryAt": [4, 7], "patienceSec": 35, "angryPatienceSec": 25 },
       "gravity": 0.6, "bubbleLifeSec": 4, "bubbleEverySec": 2, "usefulBubbleShare": 0.6,
       "maxWaiting": 3, "stars": [50, 85, 105],
       "pool": ["flatbread", "pepper", "mushroom", "sorbet", "drizzle"],
@@ -216,7 +233,7 @@
     font-family: inherit; font-weight: 600; touch-action: manipulation; cursor: pointer; }
   button:active { filter: brightness(1.2); }
   button.lv { min-width: 120px; }
-  button.lv.sel { background: #ff8a3c; color: #2c1442; }
+  button.lv.sel, button.fl.sel { background: #ff8a3c; color: #2c1442; }
   button.big { font-size: 24px; padding: 14px 40px; background: #ff8a3c; color: #2c1442; }
   button.small { font-size: 15px; padding: 8px 12px; }
   .muted { color: #c9b3df; font-size: 15px; }
@@ -271,6 +288,7 @@
   <h1>PlayFeat! playtest</h1>
   <div class="row"><label for="tester">Tester</label><input id="tester" placeholder="name or ID" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
   <div class="row" id="levelBtns"></div>
+  <div class="row" id="flowRow"><span class="muted">Customer flow</span><button class="small fl" data-flow="refill">Refill</button><button class="small fl" data-flow="schedule">Schedule</button></div>
   <div class="row"><button id="startBtn" class="big">Start</button></div>
   <div class="row snd"><span class="muted">Music</span><input type="range" id="volMusic" min="0" max="1" step="0.05"><span class="muted">Effects</span><input type="range" id="volSfx" min="0" max="1" step="0.05"><button id="muteBtn" class="small">Sound on</button><button id="soundTestBtn" class="small">Sound test</button><button id="creditsBtn" class="small">Credits</button></div>
   <div class="row muted" id="runsInfo"></div>
@@ -716,9 +734,10 @@ let S = null; // current run
 function levelCfg(id) { return id === 'marathon' ? CFG.marathon : id === 'rounds' ? Object.assign({}, CFG.marathon, CFG.marathonRounds) : CFG.levels[id]; }
 function levelName(id) { return id === 'marathon' ? 'Marathon' : id === 'rounds' ? CFG.marathonRounds.name : `${id} ${CFG.levels[id].name}`; }
 
-function startRun(levelId, tester) {
+function startRun(levelId, tester, flow) {
   const isM = levelId === 'marathon' || levelId === 'rounds';
   const lv = levelCfg(levelId);
+  const customerFlow = isM ? null : (flow || lv.customerFlow || 'schedule');
   const storageSlots = lv.storageSlots ?? C.storageSlots;
   S = {
     id: 'run-' + Date.now().toString(36), levelId, isM, lv, tester,
@@ -732,18 +751,21 @@ function startRun(levelId, tester) {
     starters: (lv.starterBubbles || []).slice().sort((a, b) => a.t - b.t), starterIdx: 0,
     nextSpawnT: 0, lastUsefulT: 0, lastLane: -1,
     serveTimes: [], waits: [], stage: 1,
+    customerFlow, idleSec: 0,
   };
   S.nextSpawnT = (S.starters.length ? S.starters[S.starters.length - 1].t : 0) + lv.bubbleEverySec;
   if (levelId === 'rounds') initRounds();
   if (isM) {
     S.m = { patience: lv.patienceStart, angryPatience: lv.angryPatienceStart, spacing: lv.spacingStart,
       nextArrivalT: 0, deck: [], groups: 0 };
+  } else if (customerFlow === 'refill') {
+    initRefill();
   } else {
     buildSchedule();
   }
   const bubbleSpeed = (H + 2 * L.bubbleR) / lv.bubbleLifeSec, fallSpeed = lv.gravity * C.fallSpeedKHPerGravity * H;
   if (bubbleSpeed >= fallSpeed) console.warn('Bubbles drift faster than items fall in', levelId);
-  log('run_start', { level: levelId, tester, orderSequence: S.orderSequence.slice() });
+  log('run_start', { level: levelId, tester, customerFlow, orderSequence: S.orderSequence.slice() });
 }
 
 function buildSchedule() {
@@ -760,6 +782,43 @@ function buildSchedule() {
   S.orderSequence = S.schedule.map(c => (c.type === 'angry' ? 'ANGRY ' : '') + c.order);
 }
 
+/* ---------------- Story days: refill customer flow (Part A) — only active when S.refill exists ----------------
+   Customers exist only once they step up to the counter. Each counter spot has its own timer: when it frees
+   (served or lost), the next customer steps up refillDelaySec later. No step-ups after durationSec. */
+function initRefill() {
+  const rf = S.lv.refill;
+  S.refill = { n: 0, spots: [] };
+  // spot timers: the first customer at 0 s, the other empty spots one after another, refillDelaySec apart
+  for (let i = 0; i < rf.counterSpots; i++) S.refill.spots.push(i * rf.refillDelaySec);
+}
+function refillOrder(n) {
+  const rf = S.lv.refill;
+  if ((rf.angryAt || []).includes(n)) return { type: 'angry', order: 'sorbet', patience: rf.angryPatienceSec };
+  if (n === 1 && rf.firstOrder) return { type: 'regular', order: rf.firstOrder, patience: rf.patienceSec };
+  const pool = Object.entries(rf.orderPool || {}).filter(([, w]) => w > 0);
+  let x = rand() * pool.reduce((a, [, w]) => a + w, 0), order = pool.length ? pool[pool.length - 1][0] : 'pepper';
+  for (const [k, w] of pool) { if ((x -= w) < 0) { order = k; break; } }
+  return { type: 'regular', order, patience: rf.patienceSec };
+}
+function tickRefill() {
+  const R = S.refill;
+  if (S.t >= C.durationSec) return;  // day over: nobody new steps up (overtime only for those at the counter)
+  for (let i = 0; i < R.spots.length; i++) {
+    if (R.spots[i] == null || S.t < R.spots[i] || S.seated.length >= R.spots.length) continue;
+    R.spots[i] = null;
+    const spec = refillOrder(++R.n);
+    S.orderSequence.push((spec.type === 'angry' ? 'ANGRY ' : '') + spec.order);
+    log('customer_stepped_up', { n: R.n, order: spec.order, type: spec.type });
+    arrive(spec);
+  }
+}
+// a counter spot became free (serve or loss): the next customer steps up after the delay
+function refillSpotFreed() {
+  if (!S.refill) return;
+  const i = S.refill.spots.findIndex(x => x === null);
+  if (i >= 0) S.refill.spots[i] = S.t + S.lv.refill.refillDelaySec;
+}
+
 function log(e, data) {
   const ev = Object.assign({ t: r2(S.t), e }, data || {});
   S.events.push(ev);
@@ -771,7 +830,7 @@ function stageIndex() {
   return idx;
 }
 const stageCfg = () => CFG.marathon.stages[stageIndex()];
-const maxWaiting = () => S.isM ? stageCfg().maxWaiting : S.lv.maxWaiting;
+const maxWaiting = () => S.isM ? stageCfg().maxWaiting : S.refill ? S.lv.refill.counterSpots : S.lv.maxWaiting;
 const currentPool = () => S.isM ? stageCfg().pool : S.lv.pool;
 
 /* ====================================================================== */
@@ -836,7 +895,7 @@ function serve(c, it) {
   SND.play('sfx_serve_ok');
   log('dish_served', { cid: c.id, dish: c.order, angry: c.type === 'angry', points: pts, tip,
     waitSec: r2(wait), patienceLeftSec: r2(c.left), patienceLeftPct: Math.round(100 * c.left / c.patienceMax), zone: zone(c) });
-  S.seated.splice(i, 1);
+  S.seated.splice(i, 1); refillSpotFreed();
   addFloat('+' + pts, sc.x, sc.y - 10, '#7dff8a', 40);
   if (tip > 0) addFloat('+' + tip + ' tip', sc.x, sc.y + 34, '#ffd84a', 28);
   if (S.isM) rampAfterServe();
@@ -844,7 +903,7 @@ function serve(c, it) {
 
 function loseCustomer(c) {
   const i = S.seated.indexOf(c), sc = slotCenter(i);
-  S.seated.splice(i, 1);
+  S.seated.splice(i, 1); refillSpotFreed();
   S.lost++;
   const before = S.score;
   S.score = Math.max(0, S.score - C.lostPenalty);
@@ -1063,10 +1122,13 @@ function step(dt) {
   // arrivals
   if (S.isM) {
     if (S.t >= S.m.nextArrivalT) { arrive(nextMarathonSpec()); S.m.nextArrivalT = S.t + S.m.spacing; }
+  } else if (S.refill) {
+    tickRefill();
   } else {
     while (S.schedIdx < S.schedule.length && S.schedule[S.schedIdx].t <= S.t) arrive(S.schedule[S.schedIdx++]);
   }
   seatCustomers();
+  if (!S.seated.length) S.idleSec += dt;  // counter idle time (both flows)
   // patience
   for (const c of S.seated.slice()) {
     c.left -= dt;
@@ -1116,9 +1178,12 @@ function step(dt) {
   for (let i = S.floats.length - 1; i >= 0; i--) { S.floats[i].age += dt; if (S.floats[i].age > 1.3) S.floats.splice(i, 1); }
   // story day end
   if (!S.isM) {
-    const allArrived = S.schedIdx >= S.schedule.length;
     const nobody = !S.seated.length && !S.outside.length;
-    if (allArrived && nobody && (S.t >= C.durationSec || C.endEarlyWhenAllDone)) endRun('completed');
+    if (S.refill) { if (nobody && S.t >= C.durationSec) endRun('completed'); }
+    else {
+      const allArrived = S.schedIdx >= S.schedule.length;
+      if (allArrived && nobody && (S.t >= C.durationSec || C.endEarlyWhenAllDone)) endRun('completed');
+    }
   }
   // Marathon Rounds: at the end of a round everything freezes and the card break opens
   if (S.rounds && !S.ended && !S.rounds.inBreak && S.t >= S.rounds.roundEndAt - 1e-6) startBreak();
@@ -1718,6 +1783,7 @@ loadRuns();
 
 const LEVELS = ['1-1', '1-2', '1-3', '1-4', 'marathon', 'rounds'];
 let selLevel = '1-1';
+let selFlow = 'refill';
 function renderLevelBtns() {
   $('levelBtns').innerHTML = '';
   for (const id of LEVELS) {
@@ -1726,6 +1792,12 @@ function renderLevelBtns() {
     b.textContent = levelName(id); b.dataset.level = id;
     b.onclick = () => { selLevel = id; renderLevelBtns(); };
     $('levelBtns').appendChild(b);
+  }
+  // customer flow toggle: story days only, chosen before Start (default refill, kept for this session)
+  $('flowRow').classList.toggle('hidden', !CFG.levels[selLevel]);
+  for (const b of document.querySelectorAll('button.fl')) {
+    b.classList.toggle('sel', b.dataset.flow === selFlow);
+    b.onclick = () => { selFlow = b.dataset.flow; renderLevelBtns(); };
   }
 }
 function showPanel() {
@@ -1742,7 +1814,7 @@ $('startBtn').onclick = () => {
   try { localStorage.setItem('playfeat_last_tester', tester); } catch (_) {}
   $('panel').classList.add('hidden');
   activePointer = null; acc = 0; lastNow = performance.now();
-  startRun(selLevel, tester);
+  startRun(selLevel, tester, selFlow);
   SND.music('music_kitchen');
 };
 try { $('tester').value = localStorage.getItem('playfeat_last_tester') || ''; } catch (_) {}
@@ -1785,6 +1857,7 @@ function summarize() {
     orderSequence: S.orderSequence,
     notes: '',
     mode: S.levelId === 'rounds' ? 'marathon_rounds' : S.isM ? 'marathon' : 'story',
+    customerFlow: S.customerFlow, counterIdleSec: S.isM ? null : r1(S.idleSec),
     ...(S.rounds ? (R => ({
       roundsCompleted: R.dishesAtBreaks.length,
       cardsBought: R.owned.map(o => `${o.id}@break${o.break}`).join('; '),
@@ -1809,6 +1882,8 @@ const COLS = [
   ['mode', 'mode'], ['rounds_completed', 'roundsCompleted'], ['cards_bought', 'cardsBought'], ['final_bake_s', 'finalBakeSec'],
   ['coins_unspent', 'coinsUnspent'], ['play_time_s', 'playTimeSec'], ['break_time_s', 'breakTimeSec'], ['total_time_s', 'totalTimeSec'],
   ['dishes_at_breaks', 'dishesAtBreaks'], ['lost_per_round', 'lostPerRound'],
+  // added for the refill customer flow (story days)
+  ['customer_flow', 'customerFlow'], ['counter_idle_s', 'counterIdleSec'],
 ];
 const cell = v => v == null ? '' : String(v);
 function tsvRow(rec) { return COLS.map(([, k]) => cell(rec[k]).replace(/[\t\r\n]+/g, ' ')).join('\t'); }
@@ -1854,7 +1929,8 @@ function showSummary(rec) {
     ['Dishes served', rec.dishesServed], ['Customers lost', rec.customersLost],
     ['Score', rec.score], ['Tips', rec.tips], ['Total', rec.total],
   ];
-  if (rec.stars != null) rows.push(['Stars (targets ' + rec.starTargets.join(' / ') + ')', rec.stars + ' / 3']);
+  if (rec.customerFlow) rows.push(['Customer flow', rec.customerFlow], ['Counter idle time (s)', rec.counterIdleSec]);
+  if (rec.stars != null) rows.push([(rec.customerFlow === 'refill' ? 'Stars (placeholder targets ' : 'Stars (targets ') + rec.starTargets.join(' / ') + ')', rec.stars + ' / 3']);
   if (rec.stageReached != null) rows.push(['Stage reached', rec.stageReached]);
   if (rec.mode === 'marathon_rounds') rows.push(
     ['Rounds completed', rec.roundsCompleted], ['Cards bought', rec.cardsBought || '-'], ['Final bake time (s)', rec.finalBakeSec],

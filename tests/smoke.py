@@ -10,7 +10,7 @@ check, errors = Checks(), []
 with server() as port, sync_playwright() as p:
     b, ctx = new_context(p, port=port)
 
-    g = Game(ctx, port, errors, speed=12); g.start('1-4')
+    g = Game(ctx, port, errors, speed=12); g.start('1-4', flow='schedule')
     g.page.wait_for_selector('#summary:not(.hidden)', timeout=60000)
     rec = g.ev('window.__pf.S.record'); ev = rec['events']
     check('idle 1-4: all 8 lost, score 0, overtime', rec['customersLost'] == 8 and rec['score'] == 0 and rec['runTimeSec'] > 90)
@@ -21,13 +21,13 @@ with server() as port, sync_playwright() as p:
 
     seqs = set()
     for i in range(3):
-        g = Game(ctx, port, errors); g.start('1-3')
+        g = Game(ctx, port, errors); g.start('1-3', flow='schedule')
         sq = g.ev('window.__pf.S.orderSequence'); seqs.add(tuple(sq))
         check(f'1-3 counts kept ({i + 1})', Counter(sq) == Counter({'pepper': 2, 'mushroom': 1, 'sorbet': 2, 'ANGRY sorbet': 1}))
         g.page.close()
     check('1-3 orders reshuffled between starts', len(seqs) > 1)
 
-    g = Game(ctx, port, errors, speed=4); g.start('1-1')
+    g = Game(ctx, port, errors, speed=4); g.start('1-1', flow='schedule')
     K = g.ev('window.__pf.centers()')
     for _ in range(300):
         bub = g.ev("(() => { const b = window.__pf.S.bubbles.find(b => b.ing==='flatbread' && b.y > 70); return b ? {x:b.x,y:b.y} : null })()")
@@ -56,7 +56,7 @@ with server() as port, sync_playwright() as p:
     check('wrong dish refused, no penalty', any(e['e'] == 'wrong_dish_refused' for e in g.ev('window.__pf.S.events')) and g.ev('[window.__pf.S.seated.length, window.__pf.S.lost]') == before and g.ev('window.__pf.S.storage[0]') is None)
     g.page.close()
 
-    g = Game(ctx, port, errors); g.start('1-3')
+    g = Game(ctx, port, errors); g.start('1-3', flow='schedule')
     K = g.ev('window.__pf.centers()')
     g.ev("(() => { const S = window.__pf.S; S.storage[0] = {id: 2, t: 'flatbread', st: 'baked', bake: 6, over: 0}; return 1 })()")
     g.drag(K['storage'][0], K['plate'])

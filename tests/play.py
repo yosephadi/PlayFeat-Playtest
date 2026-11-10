@@ -1,17 +1,18 @@
 """Bot plays a level by touch, then checks the summary, copy row, CSV/JSON downloads and saved runs.
-Usage: play.py LEVEL SPEED OUTDIR [--extras]"""
+Usage: play.py LEVEL SPEED OUTDIR [--extras] [--flow=refill|schedule]"""
 import sys, csv, io, json
 from playwright.sync_api import sync_playwright
 from harness import server, Checks, new_context, Game
 
 level, speed, OUT = sys.argv[1], float(sys.argv[2]), sys.argv[3]
 extras = '--extras' in sys.argv
+flow = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--flow=')), None)
 check, errors = Checks(), []
 with server() as port, sync_playwright() as p:
     b, ctx = new_context(p, dpr=2, perms=True, port=port)
     g = Game(ctx, port, errors, speed=speed)
     page = g.page
-    g.start(level, f'bot-{level}')
+    g.start(level, f'bot-{level}', flow=flow)
     shots = {'mid': False}
     def tick(st):
         if not shots['mid'] and st['t'] > (60 if level == 'marathon' else 9):
@@ -53,5 +54,5 @@ with server() as port, sync_playwright() as p:
     check('no page scroll', page.evaluate('document.scrollingElement.scrollTop === 0 && document.scrollingElement.scrollHeight <= innerHeight + 1'))
     b.close()
 check('no console errors', not errors, errors[:5])
-print(json.dumps({'record': {k: rec[k] for k in ('ended', 'runTimeSec', 'dishesServed', 'customersLost', 'score', 'tips', 'total', 'stars', 'stageReached')}, 'actions': actions}))
+print(json.dumps({'record': {k: rec.get(k) for k in ('ended', 'customerFlow', 'runTimeSec', 'dishesServed', 'customersLost', 'score', 'tips', 'total', 'stars', 'stageReached', 'counterIdleSec', 'avgSecBetweenServes')}, 'actions': actions}))
 sys.exit(check.report())
