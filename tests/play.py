@@ -1,18 +1,17 @@
 """Bot plays a level by touch, then checks the summary, copy row, CSV/JSON downloads and saved runs.
-Usage: play.py LEVEL SPEED OUTDIR [--extras] [--flow=refill|schedule]"""
+Usage: play.py LEVEL SPEED OUTDIR [--extras]"""
 import sys, csv, io, json
 from playwright.sync_api import sync_playwright
 from harness import server, Checks, new_context, Game
 
 level, speed, OUT = sys.argv[1], float(sys.argv[2]), sys.argv[3]
 extras = '--extras' in sys.argv
-flow = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--flow=')), None)
 check, errors = Checks(), []
 with server() as port, sync_playwright() as p:
     b, ctx = new_context(p, dpr=2, perms=True, port=port)
     g = Game(ctx, port, errors, speed=speed)
     page = g.page
-    g.start(level, f'bot-{level}', flow=flow)
+    g.start(level, f'bot-{level}')
     shots = {'mid': False}
     def tick(st):
         if not shots['mid'] and st['t'] > (60 if level == 'rounds' else 9):

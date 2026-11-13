@@ -90,7 +90,7 @@ with server() as port, sync_playwright() as p:
 
     # C) idle Day 4: angry arrivals, customers leaving (-10), last-10-seconds ticks, day end, no stars
     g = Game(ctx, port, errors, speed=12)
-    g.start('1-4', flow='schedule')
+    g.start('1-4')
     g.page.wait_for_selector('#summary:not(.hidden)', timeout=60000)
     g.page.wait_for_timeout(2600)
     snd, ev = g.ev(LOG), g.ev(EV)
@@ -98,10 +98,11 @@ with server() as port, sync_playwright() as p:
     ang = [s['t'] for s in snd if s['id'] == 'sfx_angry_arrive']
     check('C sfx_angry_arrive once per angry alien, when seated', len(ang) == 2 and all(near(x, y) for x, y in zip(ang, ang_seat)), (ang, ang_seat))
     reg = [s['t'] for s in snd if s['id'] == 'sfx_customer_arrive']
-    check('C regular arrivals use sfx_customer_arrive (6)', len(reg) == 6, reg)
+    n_reg = sum(1 for e in ev if e['e'] == 'customer_stepped_up' and e['type'] == 'regular')
+    check('C regular arrivals use sfx_customer_arrive (one per regular customer)', len(reg) == n_reg > 0, (len(reg), n_reg))
     lost = [e['t'] for e in ev if e['e'] == 'customer_lost']
     lv = [s['t'] for s in snd if s['id'] == 'sfx_customer_leaves']
-    check('C sfx_customer_leaves at every -10', len(lv) == len(lost) == 8 and all(near(x, y) for x, y in zip(lv, lost)), (lv, lost))
+    check('C sfx_customer_leaves at every -10', len(lv) == len(lost) == sum(1 for e in ev if e['e'] == 'customer_stepped_up') and all(near(x, y) for x, y in zip(lv, lost)), (lv, lost))
     tw = [s['t'] for s in snd if s['id'] == 'sfx_time_warning']
     check('C sfx_time_warning once per second for the last 10 s', len(tw) == 10 and all(near(t, 80 + k, 0.05) for k, t in enumerate(tw)), tw)
     check('C sfx_day_end after overtime, no stars', sum(1 for s in snd if s['id'] == 'sfx_day_end') == 1 and not any(s['id'].startswith('sfx_star') for s in snd))
@@ -123,11 +124,11 @@ with server() as port, sync_playwright() as p:
     g = Game(ctx, port, errors, speed=3)
     g.page.tap('#muteBtn')
     g.page.reload()
-    g.start('1-1', flow='schedule')
+    g.start('1-1')
     g.bot_play()
     g.page.wait_for_selector('#summary:not(.hidden)')
     rec = g.ev('window.__pf.S.record')
-    check('E muted Day 1 completes like normal', rec['ended'] == 'completed' and rec['dishesServed'] == 4 and rec['customersLost'] == 0, {k: rec[k] for k in ('ended', 'dishesServed', 'total', 'stars')})
+    check('E muted Day 1 completes like normal', rec['ended'] == 'completed' and rec['dishesServed'] >= 4 and rec['customersLost'] == 0, {k: rec[k] for k in ('ended', 'dishesServed', 'total', 'stars')})
     check('E muted setting saved and applied', g.ev('window.__pf.SND.settings.muted') is True)
     g.page.tap('#backBtn'); g.page.tap('#muteBtn')
     g.page.close()

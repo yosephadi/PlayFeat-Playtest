@@ -26,25 +26,21 @@ def serve_first(g):
 with server() as port, sync_playwright() as p:
     b, ctx = new_context(p, port=port)
 
-    # --- toggle: default refill, switchable, hidden for the marathon modes
+    # --- no flow toggle; story days always refill; no regular Marathon
     g = Game(ctx, port, errors)
-    check('panel toggle defaults to Refill', g.page.locator('button.fl.sel').get_attribute('data-flow') == 'refill')
+    check('no customer flow toggle on the panel', g.page.locator('#flowRow').count() == 0 and g.page.locator('button.fl').count() == 0)
     check('regular Marathon is not on the panel (only Marathon Rounds)', g.page.locator('button.lv[data-level="marathon"]').count() == 0
           and [b for b in g.page.locator('#levelBtns button').all_inner_texts() if 'Marathon' in b] == ['Marathon Rounds'])
-    g.page.tap('button.lv[data-level="rounds"]')
-    check('toggle hidden for Marathon Rounds', not g.page.is_visible('#flowRow'))
-    g.start('1-2', flow='schedule')
-    check('Schedule chosen on the panel -> schedule flow', g.ev('window.__pf.S.customerFlow') == 'schedule' and g.ev('!window.__pf.S.refill'))
     g.page.close()
 
     # --- first order is pepper on every day; Days 3 and 4 have angry aliens by count
     for lv in ('1-1', '1-2', '1-3', '1-4'):
-        g = Game(ctx, port, errors, speed=1); g.start(lv, flow='refill')
+        g = Game(ctx, port, errors, speed=1); g.start(lv)
         check(f'{lv}: refill flow, first order pepper', g.ev('window.__pf.S.customerFlow') == 'refill' and g.ev('window.__pf.S.orderSequence[0]') == 'pepper')
         g.page.close()
 
     # --- Day 1 idle: 1 spot, patience only at the counter, 2 s after each loss, nobody new after 90 s, overtime serve
-    g = Game(ctx, port, errors, speed=8); g.start('1-1', flow='refill')
+    g = Game(ctx, port, errors, speed=8); g.start('1-1')
     g.page.wait_for_function('window.__pf.S.t >= 80', timeout=60000)
     # customer 2 (stepped up at 47 s) would leave at 92 s: give them time so we can serve in overtime
     g.ev("(() => { const c = window.__pf.S.seated[0]; c.left = c.patienceMax = 40; return 1 })()")
@@ -74,7 +70,7 @@ with server() as port, sync_playwright() as p:
     g.page.close()
 
     # --- after a serve, the next customer appears ~2 s later
-    g = Game(ctx, port, errors, speed=1); g.start('1-1', flow='refill')
+    g = Game(ctx, port, errors, speed=1); g.start('1-1')
     g.page.wait_for_timeout(300)
     serve_first(g)
     t_srv = g.ev('window.__pf.S.events.filter(e => e.e === "dish_served")[0].t')
@@ -87,7 +83,7 @@ with server() as port, sync_playwright() as p:
 
     # --- Day 3 and Day 4: angry by count, max 3 at the counter, start staggered 0/2/4 s
     for lv, angry in (('1-3', [4]), ('1-4', [4, 7])):
-        g = Game(ctx, port, errors, speed=4); g.start(lv, f'bot-{lv}', flow='refill')
+        g = Game(ctx, port, errors, speed=4); g.start(lv, f'bot-{lv}')
         g.bot_play(timeout=200)
         g.page.wait_for_selector('#summary:not(.hidden)', timeout=15000)
         rec = g.ev('window.__pf.S.record'); ev = rec['events']
@@ -102,7 +98,7 @@ with server() as port, sync_playwright() as p:
         g.page.close()
 
     # --- Day 2 at most 2 at the counter (idle day)
-    g = Game(ctx, port, errors, speed=12); g.start('1-2', flow='refill')
+    g = Game(ctx, port, errors, speed=12); g.start('1-2')
     g.page.wait_for_selector('#summary:not(.hidden)', timeout=60000)
     ev = g.ev('window.__pf.S.record.events')
     check('Day 2 idle: never more than 2 at the counter, everyone lost at the counter', counter_max(ev) == 2 and g.ev('window.__pf.S.record.customersLost') == len([e for e in ev if e['e'] == 'customer_stepped_up']))
