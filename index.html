@@ -733,12 +733,14 @@ resize();
 /* ====================================================================== */
 let S = null; // current run
 
-function levelCfg(id) { return id === 'marathon' ? CFG.marathon : id === 'rounds' ? Object.assign({}, CFG.marathon, CFG.marathonRounds) : CFG.levels[id]; }
-function levelName(id) { return id === 'marathon' ? 'Marathon' : id === 'rounds' ? CFG.marathonRounds.name : `${id} ${CFG.levels[id].name}`; }
+// Marathon Rounds is built on the shared "marathon" config block (ramp, stages, tips, 3-lost end); the plain Marathon mode was removed.
+function levelCfg(id) { return id === 'rounds' ? Object.assign({}, CFG.marathon, CFG.marathonRounds) : CFG.levels[id]; }
+function levelName(id) { return id === 'rounds' ? CFG.marathonRounds.name : `${id} ${CFG.levels[id].name}`; }
 
 function startRun(levelId, tester, flow) {
-  const isM = levelId === 'marathon' || levelId === 'rounds';
+  const isM = levelId === 'rounds';
   const lv = levelCfg(levelId);
+  if (!lv) { console.warn('Unknown level', levelId); return; }
   const customerFlow = isM ? null : (flow || lv.customerFlow || 'schedule');
   const storageSlots = lv.storageSlots ?? C.storageSlots;
   S = {
@@ -1789,7 +1791,7 @@ function saveRuns() {
 }
 loadRuns();
 
-const LEVELS = ['1-1', '1-2', '1-3', '1-4', 'marathon', 'rounds'];
+const LEVELS = ['1-1', '1-2', '1-3', '1-4', 'rounds'];
 let selLevel = '1-1';
 let selFlow = 'refill';
 function renderLevelBtns() {
@@ -1864,7 +1866,7 @@ function summarize() {
     itemsDroppedVanished: S.vanished, itemsThrownAway: S.trashed,
     orderSequence: S.orderSequence,
     notes: '',
-    mode: S.levelId === 'rounds' ? 'marathon_rounds' : S.isM ? 'marathon' : 'story',
+    mode: S.isM ? 'marathon_rounds' : 'story',
     customerFlow: S.customerFlow, counterIdleSec: S.isM ? null : r1(S.idleSec),
     ...(S.rounds ? (R => ({
       roundsCompleted: R.dishesAtBreaks.length,

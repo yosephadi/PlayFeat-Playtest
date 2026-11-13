@@ -29,8 +29,8 @@ with server() as port, sync_playwright() as p:
     # --- toggle: default refill, switchable, hidden for the marathon modes
     g = Game(ctx, port, errors)
     check('panel toggle defaults to Refill', g.page.locator('button.fl.sel').get_attribute('data-flow') == 'refill')
-    g.page.tap('button.lv[data-level="marathon"]')
-    check('toggle hidden for Marathon', not g.page.is_visible('#flowRow'))
+    check('regular Marathon is not on the panel (only Marathon Rounds)', g.page.locator('button.lv[data-level="marathon"]').count() == 0
+          and [b for b in g.page.locator('#levelBtns button').all_inner_texts() if 'Marathon' in b] == ['Marathon Rounds'])
     g.page.tap('button.lv[data-level="rounds"]')
     check('toggle hidden for Marathon Rounds', not g.page.is_visible('#flowRow'))
     g.start('1-2', flow='schedule')

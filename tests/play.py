@@ -15,7 +15,7 @@ with server() as port, sync_playwright() as p:
     g.start(level, f'bot-{level}', flow=flow)
     shots = {'mid': False}
     def tick(st):
-        if not shots['mid'] and st['t'] > (60 if level == 'marathon' else 9):
+        if not shots['mid'] and st['t'] > (60 if level == 'rounds' else 9):
             page.screenshot(path=f'{OUT}/{level}-1-midgame.png'); shots['mid'] = True
     actions = g.bot_play(timeout=450, extras=extras, on_tick=tick)
     page.wait_for_selector('#summary:not(.hidden)', timeout=15000)

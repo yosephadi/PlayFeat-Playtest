@@ -107,12 +107,12 @@ with server() as port, sync_playwright() as p:
     check('C sfx_day_end after overtime, no stars', sum(1 for s in snd if s['id'] == 'sfx_day_end') == 1 and not any(s['id'].startswith('sfx_star') for s in snd))
     g.page.close()
 
-    # D) marathon start + run over
+    # D) Marathon Rounds start + run over (idle: 3 lost before the first break)
     g = Game(ctx, port, errors, speed=20)
-    g.start('marathon')
+    g.start('rounds')
     g.page.wait_for_timeout(300)
     s0 = g.ev(LOG)
-    check('D marathon: music_kitchen + first customer arrive at t~0', any(s['id'] == 'music_kitchen' for s in s0) and any(s['id'] == 'sfx_customer_arrive' and s['t'] < 0.1 for s in s0), [x for x in s0 if x['t'] is not None][:3])
+    check('D Marathon Rounds: music_kitchen + first customer arrive at t~0', any(s['id'] == 'music_kitchen' for s in s0) and any(s['id'] == 'sfx_customer_arrive' and s['t'] < 0.1 for s in s0), [x for x in s0 if x['t'] is not None][:3])
     g.page.wait_for_selector('#summary:not(.hidden)', timeout=60000)
     g.page.wait_for_timeout(300)
     snd = g.ev(LOG)

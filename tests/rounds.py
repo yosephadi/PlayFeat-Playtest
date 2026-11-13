@@ -22,7 +22,7 @@ def serve_first_customer(g):
 with server() as port, sync_playwright() as p:
     b, ctx = new_context(p, perms=True, port=port)
     g = Game(ctx, port, errors, speed=10)
-    check('panel has a Marathon Rounds button next to Marathon', g.page.locator('button.lv[data-level="rounds"]').count() == 1 and g.page.locator('button.lv[data-level="marathon"]').count() == 1)
+    check('panel has Marathon Rounds and no regular Marathon', g.page.locator('button.lv[data-level="rounds"]').count() == 1 and g.page.locator('button.lv[data-level="marathon"]').count() == 0)
     g.start('rounds', 'rounds-test')
     check('starts with 0 marathon coins and 0 storage slots', g.ev(f"{R}.coins === 0 && window.__pf.S.storage.length === 0"))
     LONG = "(() => { const S = window.__pf.S; S.m.patience = 99999; S.m.angryPatience = 99999; S.seated.concat(S.outside).forEach(c => { c.patienceMax = c.left = 99999; }); return 1 })()"
