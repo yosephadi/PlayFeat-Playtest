@@ -147,6 +147,9 @@
     "roundSec": 90,
     "breakSec": 15,
     "storageUnlockAt": [6, 14],
+    "bubbles": { "_help": "Bubble supply follows demand. neededList = ingredients the counter's orders still need (oldest order first) minus what is in the kitchen. usefulBubbleShare of bubbles carry the first needed ingredient without a bubble on screen; the rest are random from the stage's ingredients. Interval = clamp(usefulBubbleShare / (supplyMargin x demand), min, max); demand = needed / average patience left, or ingredientsPerDish / time between customers if larger (followArrivalRate). A needed ingredient not seen in a bubble for guaranteeSec comes next. At most maxBubblesOnScreen.",
+      "usefulBubbleShare": 0.7, "minBubbleIntervalSec": 0.8, "maxBubbleIntervalSec": 2, "supplyMargin": 1.3,
+      "ingredientsPerDish": 2, "followArrivalRate": true, "guaranteeSec": 3, "maxBubblesOnScreen": 8 },
     "maxCardsPerBreak": 1,
     "limits": { "minBakeSec": 3.0, "maxPatienceMult": 1.2 },
     "cards": [
@@ -706,6 +709,7 @@ function startRun(levelId, tester) {
     nextSpawnT: 0, lastUsefulT: 0, lastLane: -1,
     serveTimes: [], waits: [], stage: 1,
     customerFlow, idleSec: 0,
+    lastSeen: {}, needSince: {}, bubblesSpawned: 0, usefulSpawned: 0, bubbleInterval: lv.bubbleEverySec, ingWaits: [], lostWaitingIng: 0,
   };
   S.nextSpawnT = (S.starters.length ? S.starters[S.starters.length - 1].t : 0) + lv.bubbleEverySec;
   if (levelId === 'rounds') initRounds();
@@ -831,7 +835,9 @@ function serve(c, it) {
   if (S.rounds) { S.rounds.coins += tip; checkStorageUnlock(); }  // 1 marathon coin per tip
   S.waits.push(wait); S.serveTimes.push(S.t);
   SND.play('sfx_serve_ok');
-  log('dish_served', { cid: c.id, dish: c.order, angry: c.type === 'angry', points: pts, tip,
+  let ingWait;
+  if (S.rounds) { ingWait = r2(Math.max(0, (c.availAt ?? S.t) - c.seatedT)); S.ingWaits.push(ingWait); }
+  log('dish_served', { cid: c.id, dish: c.order, angry: c.type === 'angry', points: pts, tip, ingredientWaitSec: ingWait,
     waitSec: r2(wait), patienceLeftSec: r2(c.left), patienceLeftPct: Math.round(100 * c.left / c.patienceMax), zone: zone(c) });
   S.seated.splice(i, 1); refillSpotFreed();
   addFloat('+' + pts, sc.x, sc.y - 10, '#7dff8a', 40);
@@ -846,7 +852,9 @@ function loseCustomer(c) {
   const before = S.score;
   S.score = Math.max(0, S.score - C.lostPenalty);
   SND.play('sfx_customer_leaves');
-  log('customer_lost', { cid: c.id, order: c.order, type: c.type, pointsLost: before - S.score });
+  const waitingIng = !!S.rounds && c.availAt == null;
+  if (waitingIng) S.lostWaitingIng++;
+  log('customer_lost', { cid: c.id, order: c.order, type: c.type, pointsLost: before - S.score, waitingForIngredient: S.rounds ? waitingIng : undefined });
   addFloat('-' + C.lostPenalty, sc.x, sc.y, '#ff4f4f', 48);
   if (S.isM && S.lost >= S.lv.maxLost) endRun('lost ' + S.lv.maxLost);
 }
@@ -1037,7 +1045,7 @@ function spawnBubble(ing, lane, kind) {
   const useful = usefulSet.includes(ing);
   if (useful || !usefulSet.length) S.lastUsefulT = S.t;
   S.bubbles.push({ id: uid++, ing, lane, x: L.lanes[lane], y: -L.bubbleR });
-  S.lastLane = lane;
+  S.lastLane = lane; S.lastSeen[ing] = S.t; S.bubblesSpawned++; if (useful) S.usefulSpawned++;
   log('bubble_spawned', { ing, lane: lane + 1, useful, kind });
 }
 
@@ -1052,6 +1060,73 @@ function spawnRandom() {
     else { const others = pool.filter(k => !usefulSet.includes(k)); ing = pick(others.length ? others : pool); }
   }
   spawnBubble(ing, freeLane(), kind);
+}
+
+/* ---------------- Marathon Rounds: bubbles follow demand (only when S.rounds exists) ---------------- */
+const BC = () => RC().bubbles;
+// what the counter's orders still need, oldest order first, minus the kitchen (held, falling, hovering, grill,
+// plates, bowl, storage). Bubbles on screen are NOT subtracted. Entries: { k: ingredient, cid }
+function neededList() {
+  const inv = {};
+  const add = k => { inv[k] = (inv[k] || 0) + 1; };
+  const addItem = it => {
+    if (!it) return;
+    if (it.t === 'dish') add('dish:' + it.dish);
+    else if (it.t === 'flatbread') { if (it.st !== 'burnt') add('flatbread'); }
+    else add(it.t);
+  };
+  if (S.held) addItem(S.held.item);
+  S.falling.forEach(f => addItem(f.item)); S.hovering.forEach(f => addItem(f.item));
+  S.grill.forEach(addItem); S.plates.forEach(addItem); addItem(S.bowl); S.storage.forEach(addItem);
+  const out = [];
+  for (const c of S.seated.slice().sort((a, b) => a.seatedT - b.seatedT)) {
+    const d = DISH[c.order];
+    if (inv['dish:' + c.order] > 0) { inv['dish:' + c.order]--; continue; }
+    for (const k of [d.base, d.topping]) { if (inv[k] > 0) inv[k]--; else out.push({ k, cid: c.id }); }
+  }
+  return out;
+}
+function roundsBubbleInterval(need) {
+  const b = BC();
+  let demand = 0;
+  if (need.length && S.seated.length) {
+    const avgLeft = S.seated.reduce((a, c) => a + c.left, 0) / S.seated.length;
+    demand = need.length / Math.max(0.5, avgLeft);           // ingredients per second the counter needs
+  }
+  if (b.followArrivalRate) demand = Math.max(demand, b.ingredientsPerDish / S.m.spacing);  // keep up with arrivals
+  if (demand <= 0) return b.maxBubbleIntervalSec;
+  return Math.min(b.maxBubbleIntervalSec, Math.max(b.minBubbleIntervalSec, b.usefulBubbleShare / (b.supplyMargin * demand)));
+}
+// returns false when the screen is full (the spawn waits for a bubble to leave)
+function spawnRoundsBubble() {
+  const b = BC();
+  if (S.bubbles.length >= b.maxBubblesOnScreen) return false;
+  const pool = currentPool(), need = neededList().map(n => n.k).filter(k => pool.includes(k));
+  const onScreen = new Set(S.bubbles.map(x => x.ing));
+  // overdue = needed for guaranteeSec without appearing in a bubble (clock starts when it became needed or at its last bubble)
+  const overdue = need.find(k => !onScreen.has(k) && S.t - Math.max(S.needSince[k] ?? S.t, S.lastSeen[k] ?? -Infinity) >= b.guaranteeSec);
+  let ing, kind;
+  if (overdue) { ing = overdue; kind = 'guaranteed'; }
+  else if (need.length && rand() < b.usefulBubbleShare) { ing = need.find(k => !onScreen.has(k)) || need[0]; kind = 'useful'; }
+  else { ing = pick(pool); kind = 'random'; }
+  const useful = need.includes(ing);
+  const lane = freeLane();
+  S.bubbles.push({ id: uid++, ing, lane, x: L.lanes[lane], y: -L.bubbleR });
+  S.lastLane = lane; S.lastSeen[ing] = S.t; S.bubblesSpawned++; if (useful) S.usefulSpawned++;
+  S.bubbleInterval = roundsBubbleInterval(neededList());
+  log('bubble_spawned', { ing, lane: lane + 1, useful, kind, needed: need.length, interval: r2(S.bubbleInterval) });
+  return true;
+}
+// logging: when has every ingredient of each order been available (seen in a bubble since seating, or in the kitchen)?
+function trackIngredientAvailability() {
+  const need = neededList(), now = new Set(need.map(n => n.k));
+  for (const k of now) if (S.needSince[k] == null) S.needSince[k] = S.t;   // when each ingredient became needed
+  for (const k of Object.keys(S.needSince)) if (!now.has(k)) delete S.needSince[k];
+  for (const c of S.seated) {
+    if (c.availAt != null) continue;
+    const mine = need.filter(n => n.cid === c.id);
+    if (mine.every(n => (S.lastSeen[n.k] ?? -Infinity) >= c.seatedT)) c.availAt = S.t;
+  }
 }
 
 /* ====================================================================== */
@@ -1097,7 +1172,8 @@ function step(dt) {
     const st = S.starters[S.starterIdx++];
     spawnBubble(st.ing, Math.max(0, Math.min(L.lanes.length - 1, (st.lane || 1) - 1)), 'starter');
   }
-  if (S.t >= S.nextSpawnT) { spawnRandom(); S.nextSpawnT += S.lv.bubbleEverySec; }
+  if (S.rounds) { if (S.t >= S.nextSpawnT && spawnRoundsBubble()) S.nextSpawnT = S.t + S.bubbleInterval; trackIngredientAvailability(); }
+  else if (S.t >= S.nextSpawnT) { spawnRandom(); S.nextSpawnT += S.lv.bubbleEverySec; }
   // bubble drift
   const bv = (H + 2 * L.bubbleR) / S.lv.bubbleLifeSec;
   for (let i = S.bubbles.length - 1; i >= 0; i--) {
@@ -1798,6 +1874,12 @@ function summarize() {
       lostPerRound: R.lostPerRound.concat([S.lost - R.lostAtRoundStart]).join('; '),
       breakPicks: R.breakLog.map(b => b.pick).join(' | '),
       breakCoins: R.breakLog.map(b => `${b.coinsBefore}>${b.coinsAfter}`).join(' | '),
+      ingredientWaitPerDish: S.ingWaits.join('; '),
+      ingredientWaitAvgSec: S.ingWaits.length ? r1(S.ingWaits.reduce((a, b) => a + b, 0) / S.ingWaits.length) : null,
+      ingredientWaitMaxSec: S.ingWaits.length ? r1(Math.max(...S.ingWaits)) : null,
+      lostWaitingIngredient: S.lostWaitingIng,
+      bubblesSpawned: S.bubblesSpawned,
+      usefulBubbleShare: S.bubblesSpawned ? r2(S.usefulSpawned / S.bubblesSpawned) : null,
     }))(S.rounds) : {}),
     levelConfig: JSON.parse(JSON.stringify(S.lv)),
     events: S.events,
@@ -1819,6 +1901,9 @@ const COLS = [
   ['customer_flow', 'customerFlow'], ['counter_idle_s', 'counterIdleSec'],
   // added for one card per break (Marathon Rounds): pick or 'skip' per break, coins before>after per break
   ['break_picks', 'breakPicks'], ['break_coins', 'breakCoins'],
+  // added for the Marathon Rounds bubble supply
+  ['ingredient_wait_per_dish', 'ingredientWaitPerDish'], ['ingredient_wait_avg_s', 'ingredientWaitAvgSec'], ['ingredient_wait_max_s', 'ingredientWaitMaxSec'],
+  ['lost_waiting_ingredient', 'lostWaitingIngredient'], ['bubbles_spawned', 'bubblesSpawned'], ['useful_bubble_share', 'usefulBubbleShare'],
 ];
 const cell = v => v == null ? '' : String(v);
 function tsvRow(rec) { return COLS.map(([, k]) => cell(rec[k]).replace(/[\t\r\n]+/g, ' ')).join('\t'); }
@@ -1871,7 +1956,10 @@ function showSummary(rec) {
     ['Rounds completed', rec.roundsCompleted], ['Cards bought', rec.cardsBought || '-'], ['Final bake time (s)', rec.finalBakeSec],
     ['Marathon coins unspent', rec.coinsUnspent], ['Play / break / total time (s)', `${rec.playTimeSec} / ${rec.breakTimeSec} / ${rec.totalTimeSec}`],
     ['Dishes at each break', rec.dishesAtBreaks || '-'], ['Lost per round', rec.lostPerRound],
-    ['Card per break', rec.breakPicks || '-'], ['Coins before > after each break', rec.breakCoins || '-']);
+    ['Card per break', rec.breakPicks || '-'], ['Coins before > after each break', rec.breakCoins || '-'],
+    ['Ingredient wait avg / max (s)', `${rec.ingredientWaitAvgSec ?? '-'} / ${rec.ingredientWaitMaxSec ?? '-'}`],
+    ['Lost while an ingredient had not appeared', rec.lostWaitingIngredient],
+    ['Bubbles spawned / useful share', `${rec.bubblesSpawned} / ${rec.usefulBubbleShare ?? '-'}`]);
   rows.push(
     ['Avg seconds between serves', rec.avgSecBetweenServes ?? '-'], ['Avg wait per customer (s)', rec.avgWaitSec ?? '-'],
     ['Burnt flatbreads', rec.burntFlatbreads], ['Bubbles missed', rec.bubblesMissed], ['Wrong dishes refused', rec.wrongDishes], ['Wrong placements', rec.wrongPlacements ?? 0],
@@ -2009,7 +2097,7 @@ window.__pf = {
   get S() { return S; }, L, CFG, get runs() { return RUNS; },
   computeNeeded: () => computeNeeded(), tsvRow, COLS,
   toClient(x, y) { const r = cv.getBoundingClientRect(); return { x: r.left + x * scale, y: r.top + y * scale }; },
-  grillSlotPos, SND, SOUND_CONFIG, buyCard, endBreak, offersFor, renderBreak, get R() { return S && S.rounds; }, get soundLog() { return SND.soundLog; },
+  grillSlotPos, SND, SOUND_CONFIG, buyCard, endBreak, offersFor, renderBreak, neededList, roundsBubbleInterval, spawnRoundsBubble, get R() { return S && S.rounds; }, get soundLog() { return SND.soundLog; },
   centers() {
     return { trash: L.trashC, grill: grillSlotPos(0), plate: { x: L.plates[0].x, y: L.plates[0].y }, bowl: { x: L.bowl.x, y: L.bowl.y },
       storage: L.storage.map((_, i) => boxCenter(i)), slots: L.slots.map((_, i) => slotCenter(i)), pause: { x: L.pauseBtn.x + 24, y: L.pauseBtn.y + 24 } };
