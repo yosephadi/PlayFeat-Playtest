@@ -1,6 +1,7 @@
 // Decides the next drag for the automated player. Returns {from,to,label} in logical coords, or {wait}/{ended}.
 (() => {
   const pf = window.__pf, S = pf.S, K = pf.centers();
+  const AIR = { x: 160, y: 330 };  // open air above the counter: a release here falls and vanishes
   if (!S) return { wait: true };
   if (S.ended) return { ended: true };
   if (S.held || S.paused) return { wait: true };
@@ -15,10 +16,10 @@
     const ci = S.seated.findIndex(c => c.order === d.it.dish);
     if (ci >= 0) return { from: d.p, to: K.slots[ci], label: 'serve ' + d.it.dish };
   }
-  if (g && g.st === 'burnt') return { from: K.grill, to: K.trash, label: 'trash burnt' };
+  if (g && g.st === 'burnt') return { from: K.grill, to: AIR, label: 'drop burnt' };
   const freeSt = S.storage.findIndex(x => !x);
   for (const [it, p] of [[plate, K.plate], [S.bowl, K.bowl]]) {
-    if (it && it.t === 'dish' && !orders.includes(it.dish)) return { from: p, to: freeSt >= 0 ? K.storage[freeSt] : K.trash, label: 'park unwanted dish' };
+    if (it && it.t === 'dish' && !orders.includes(it.dish)) return { from: p, to: freeSt >= 0 ? K.storage[freeSt] : AIR, label: freeSt >= 0 ? 'park unwanted dish' : 'drop unwanted dish' };
   }
   const need = orders.slice();
   dishSpots.forEach(d => { const k = need.indexOf(d.it.dish); if (k >= 0) need.splice(k, 1); });

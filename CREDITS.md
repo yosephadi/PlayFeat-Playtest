@@ -25,7 +25,7 @@ The author's credit line format, from his attribution page, is "Music by Matthew
 
 The Mixkit license does not allow redistributing the sounds on their own. They are included only as part of this game.
 
-The full Kenney packs are included so the sound test screen can swap any file. These Kenney files are used by default: `interface-sounds/click_001` (button), `interface-sounds/pluck_001` (bubble pop), `interface-sounds/scratch_004` (trash), `digital-audio/pepSound3` (grab), `digital-audio/twoTone1` (customer arrives), and `sci-fi-sounds/lowFrequency_explosion_001` (angry alien arrives).
+The full Kenney packs are included so the sound test screen can swap any file. These Kenney files are used by default: `interface-sounds/click_001` (button), `interface-sounds/pluck_001` (bubble pop), `digital-audio/pepSound3` (grab), `digital-audio/twoTone1` (customer arrives), and `sci-fi-sounds/lowFrequency_explosion_001` (angry alien arrives).
 
 ## Code-made sounds
 

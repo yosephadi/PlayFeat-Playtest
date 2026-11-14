@@ -41,8 +41,7 @@
     "bowl":    { "empty": ["sorbet", "drizzle", "dish:sorbet"], "sorbet": ["drizzle"], "drizzle": ["sorbet"] },
     "grill":   { "empty": ["flatbread:raw", "flatbread:baked"], "*": ["flatbread:raw", "flatbread:baked"] },
     "storage": { "empty": ["flatbread:raw", "flatbread:baked", "pepper", "mushroom", "sorbet", "drizzle", "dish:pepper", "dish:mushroom", "dish:sorbet"],
-                 "*":     ["flatbread:raw", "flatbread:baked", "pepper", "mushroom", "sorbet", "drizzle", "dish:pepper", "dish:mushroom", "dish:sorbet"] },
-    "trash":   { "empty": ["*"] }
+                 "*":     ["flatbread:raw", "flatbread:baked", "pepper", "mushroom", "sorbet", "drizzle", "dish:pepper", "dish:mushroom", "dish:sorbet"] }
   },
   "layout": {
     "laneX": [280, 410, 540, 680],
@@ -323,7 +322,6 @@ const SOUND_CONFIG = {
   sfx_grab:            { file: 'audio/kenney/digital-audio/pepSound3.m4a', volume: 0.3 },
   sfx_bubble_pop:      { file: 'audio/kenney/interface-sounds/pluck_001.m4a', volume: 0.55 },
   sfx_place:           { file: 'audio/mixkit/bowl_placed.m4a', volume: 0.6 },
-  sfx_trash:           { file: 'audio/kenney/interface-sounds/scratch_004.m4a', volume: 0.6 },
   sfx_bake_loop:       { file: 'audio/mixkit/frying_eggs_loop.m4a', volume: 0.22, loop: true },
   sfx_bake_ready:      { file: 'audio/mixkit/oven_ding.m4a', volume: 0.7 },
   sfx_bake_warning:    { synth: 'tick', volume: 0.35 },
@@ -615,8 +613,6 @@ const INSERTS = [quad(244, 322, 580, 628), quad(244, 322, 640, 704)];
 
 const L = {
   counterY: FAR_Y,
-  trashPoly: quad(-FAR_HALF, -262, FAR_Y, H),
-  trashC: { x: 60, y: 690 },
   grillPoly: quad(-78, 78, 598, 738),
   grillInner: quad(-58, 68, 612, 724),
   grillC: P(5, 668),
@@ -700,7 +696,7 @@ function startRun(levelId, tester) {
     id: 'run-' + Date.now().toString(36), levelId, isM, lv, tester,
     startedAt: new Date().toISOString(),
     t: 0, paused: false, ended: false, endReason: null,
-    score: 0, tips: 0, served: 0, lost: 0, burnt: 0, missed: 0, wrong: 0, vanished: 0, trashed: 0,
+    score: 0, tips: 0, served: 0, lost: 0, burnt: 0, missed: 0, wrong: 0, vanished: 0,
     events: [], seated: [], outside: [], orderSequence: [],
     bubbles: [], falling: [], hovering: [], held: null, floats: [], wrongPlace: 0, shake: null,
     grill: new Array(C.grillSlots).fill(null), plates: L.plates.map(() => null), bowl: null,
@@ -1303,13 +1299,6 @@ function drop(p) {
   // serving window (aliens)
   const si = slotAt(p);
   if (si >= 0 && S.seated[si] && it.t === 'dish') { serve(S.seated[si], it); return; }
-  // trash
-  if (inPoly(p, L.trashPoly, 14)) {
-    if (stationBusy('trash') || !canPlace('trash', null, it)) return refuse(it, p, 'trash');
-    S.trashed++; log('item_thrown_away', { item: describe(it) }); SND.play('sfx_trash');
-    addFloat('\u{1F5D1}', L.trashC.x, L.trashC.y - 30, '#fff', 30);
-    return;
-  }
   // grill
   if (inPoly(p, L.grillPoly, 12)) {
     let gi = -1, gd = 1e9;
@@ -1485,15 +1474,6 @@ function drawCounter() {
   for (let u = -FAR_HALF; u <= FAR_HALF; u += 44) { const a = P(u, FAR_Y), b = P(u, H); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
   ctx.restore();
   ctx.fillStyle = '#c9aaff'; ctx.fillRect(P(-FAR_HALF, FAR_Y).x, FAR_Y - 2, 2 * FAR_HALF, 5);
-  // trash strip
-  ctx.fillStyle = '#bfc2cc'; poly(L.trashPoly); ctx.fill();
-  ctx.strokeStyle = '#9599a8'; ctx.lineWidth = 3; ctx.stroke();
-  const t = L.trashC;
-  ctx.strokeStyle = '#5b5f73'; ctx.lineWidth = 3.5;
-  rr(t.x - 15, t.y - 18, 30, 38, 5); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(t.x - 21, t.y - 24); ctx.lineTo(t.x + 21, t.y - 24); ctx.moveTo(t.x - 6, t.y - 29); ctx.lineTo(t.x + 6, t.y - 29);
-  for (const dx of [-6, 0, 6]) { ctx.moveTo(t.x + dx, t.y - 10); ctx.lineTo(t.x + dx, t.y + 13); }
-  ctx.stroke();
 }
 
 // Yellow warning triangle, pulsing, shown in the last seconds before a flatbread burns.
@@ -1567,7 +1547,7 @@ function drawVessels(st) {
 }
 
 function drawStorage(st) {
-  // steel prep rail (mirrors the trash strip on the left)
+  // steel prep rail along the right edge of the counter
   if (!st.storage.length) return;  // Marathon Rounds: nothing here until a slot unlocks
   ctx.fillStyle = '#d3d7e0'; poly(L.rail); ctx.fill();
   ctx.strokeStyle = '#9aa0ad'; ctx.lineWidth = 3; ctx.stroke();
@@ -1860,7 +1840,7 @@ function summarize() {
     avgSecBetweenServes: S.served ? r1(S.serveTimes[S.served - 1] / S.served) : null,
     avgWaitSec: avg(S.waits),
     burntFlatbreads: S.burnt, bubblesMissed: S.missed, wrongDishes: S.wrong, wrongPlacements: S.wrongPlace,
-    itemsDroppedVanished: S.vanished, itemsThrownAway: S.trashed,
+    itemsDroppedVanished: S.vanished,
     orderSequence: S.orderSequence,
     notes: '',
     mode: S.isM ? 'marathon_rounds' : 'story',
@@ -1892,7 +1872,7 @@ const COLS = [
   ['score', 'score'], ['tips', 'tips'], ['total', 'total'], ['stars', 'stars'], ['stage_reached', 'stageReached'],
   ['avg_s_between_serves', 'avgSecBetweenServes'], ['avg_wait_s', 'avgWaitSec'], ['burnt_flatbreads', 'burntFlatbreads'],
   ['bubbles_missed', 'bubblesMissed'], ['wrong_dishes', 'wrongDishes'], ['wrong_placements', 'wrongPlacements'], ['items_dropped_vanished', 'itemsDroppedVanished'],
-  ['items_thrown_away', 'itemsThrownAway'], ['notes', 'notes'],
+  ['items_thrown_away', 'itemsThrownAway'], ['notes', 'notes'],  // items_thrown_away: trash bin removed, column kept blank so rows line up
   // added for Marathon Rounds (empty for other modes, except mode)
   ['mode', 'mode'], ['rounds_completed', 'roundsCompleted'], ['cards_bought', 'cardsBought'], ['final_bake_s', 'finalBakeSec'],
   ['coins_unspent', 'coinsUnspent'], ['play_time_s', 'playTimeSec'], ['break_time_s', 'breakTimeSec'], ['total_time_s', 'totalTimeSec'],
@@ -1963,7 +1943,7 @@ function showSummary(rec) {
   rows.push(
     ['Avg seconds between serves', rec.avgSecBetweenServes ?? '-'], ['Avg wait per customer (s)', rec.avgWaitSec ?? '-'],
     ['Burnt flatbreads', rec.burntFlatbreads], ['Bubbles missed', rec.bubblesMissed], ['Wrong dishes refused', rec.wrongDishes], ['Wrong placements', rec.wrongPlacements ?? 0],
-    ['Items dropped and vanished', rec.itemsDroppedVanished], ['Items thrown away', rec.itemsThrownAway],
+    ['Items dropped and vanished', rec.itemsDroppedVanished],
   );
   const tr = rs => rs.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('');
   const half = Math.ceil(rows.length / 2);
@@ -1980,7 +1960,7 @@ function esc(v) { return String(v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<':
 /* ====================================================================== */
 const SOUND_LABELS = {
   music_kitchen: 'Music, kitchen days + marathon', music_title: 'Music, start screen', sfx_button: 'Button tap', sfx_grab: 'Item picked up',
-  sfx_bubble_pop: 'Bubble grabbed', sfx_place: 'Item placed', sfx_trash: 'Item thrown away', sfx_bake_loop: 'Baking (loop)',
+  sfx_bubble_pop: 'Bubble grabbed', sfx_place: 'Item placed', sfx_bake_loop: 'Baking (loop)',
   sfx_bake_ready: 'Flatbread ready', sfx_bake_warning: 'Burn warning tick', sfx_bake_burnt: 'Flatbread burnt', sfx_customer_arrive: 'Customer arrives',
   sfx_angry_arrive: 'Angry alien arrives', sfx_serve_ok: 'Dish served', sfx_wrong_dish: 'Wrong dish', sfx_wrong_place: 'Wrong station (item refused)', sfx_customer_leaves: 'Customer leaves (-10)',
   sfx_time_warning: 'Last 10 s tick', sfx_day_end: 'Day ends', sfx_star_1: 'Star 1', sfx_star_2: 'Star 2', sfx_star_3: 'Star 3', sfx_run_over: 'Marathon over',
@@ -2099,7 +2079,7 @@ window.__pf = {
   toClient(x, y) { const r = cv.getBoundingClientRect(); return { x: r.left + x * scale, y: r.top + y * scale }; },
   grillSlotPos, SND, SOUND_CONFIG, buyCard, endBreak, offersFor, renderBreak, neededList, roundsBubbleInterval, spawnRoundsBubble, get R() { return S && S.rounds; }, get soundLog() { return SND.soundLog; },
   centers() {
-    return { trash: L.trashC, grill: grillSlotPos(0), plate: { x: L.plates[0].x, y: L.plates[0].y }, bowl: { x: L.bowl.x, y: L.bowl.y },
+    return { grill: grillSlotPos(0), plate: { x: L.plates[0].x, y: L.plates[0].y }, bowl: { x: L.bowl.x, y: L.bowl.y },
       storage: L.storage.map((_, i) => boxCenter(i)), slots: L.slots.map((_, i) => slotCenter(i)), pause: { x: L.pauseBtn.x + 24, y: L.pauseBtn.y + 24 } };
   },
 };

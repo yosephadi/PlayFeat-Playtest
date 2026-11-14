@@ -91,7 +91,7 @@ class Game:
 
     def bot_play(self, timeout=400, extras=False, on_tick=None):
         """Let the bot play until the run ends. Returns action counts."""
-        actions, did_air, did_trash = {}, False, False
+        actions, did_air = {}, False
         t0 = time.time()
         while time.time() - t0 < timeout:
             st = self.ev('(() => { const S = window.__pf.S; return {t: S.t, ended: S.ended} })()')
@@ -99,12 +99,10 @@ class Game:
                 break
             if on_tick:
                 on_tick(st)
-            if extras and st['t'] > 10 and not did_trash:
+            if extras and st['t'] > 10 and not did_air:
                 spare = self.ev("(() => { const b = window.__pf.S.bubbles.filter(b => b.y > 60 && b.y < 300 && b.ing === 'mushroom')[0]; return b ? {x:b.x, y:b.y} : null })()")
-                if spare and not did_air:
+                if spare:
                     self.drag(spare, {'x': 160, 'y': 330}); did_air = True; actions['air drop'] = 1; continue
-                if spare and did_air:
-                    self.drag(spare, self.ev('window.__pf.centers().trash')); did_trash = True; actions['trash'] = 1; continue
             act = self.ev(BOT)
             if act.get('ended'):
                 break
