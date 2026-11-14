@@ -12,7 +12,7 @@ ITEM = {'flatbread:baked': "{t:'flatbread', st:'baked', bake:6, over:0}", 'flatb
 with server() as port, sync_playwright() as p:
     b, ctx = new_context(p, port=port)
     g = Game(ctx, port, errors, speed=1)
-    g.start('1-3', 'refuse-test')
+    g.start('1-6', 'refuse-test')
     K = g.ev('window.__pf.centers()')
     hold = g.ev('window.__pf.CFG.common.refuseHoldMs')
     check('hold time comes from CONFIG (refuseHoldMs = 300)', hold == 300)
@@ -50,7 +50,7 @@ with server() as port, sync_playwright() as p:
     ev = g.ev('window.__pf.S.events')
     check('then it leaves the screen like any dropped item (item_dropped_vanished)', any(e['e'] == 'item_dropped_vanished' and e['item'] == 'flatbread(baked)' for e in ev) and state()['bowl'] is None)
     wp = [e for e in ev if e['e'] == 'wrong_placement']
-    check('log: wrong_placement with item, target, time, level', wp and wp[-1]['item'] == 'flatbread(baked)' and wp[-1]['station'] == 'bowl' and 't' in wp[-1] and wp[-1]['level'] == '1-3', wp[-1:])
+    check('log: wrong_placement with item, target, time, level', wp and wp[-1]['item'] == 'flatbread(baked)' and wp[-1]['station'] == 'bowl' and 't' in wp[-1] and wp[-1]['level'] == '1-6', wp[-1:])
 
     # 2) a valid drop still works
     reset()

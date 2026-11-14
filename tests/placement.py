@@ -29,10 +29,9 @@ CASES = [
     ('grill', 'flatbread:raw', {'flatbread:raw', 'flatbread:baked'}),   # full grill: new flatbread replaces (as before)
     ('storage', None, NOT_BURNT),
     ('storage', 'pepper', NOT_BURNT),                                   # occupied insert: replaces (as before)
-    ('trash', None, ALL),
 ]
-SLOT = {'plate': 'S.plates[0]', 'bowl': 'S.bowl', 'grill': 'S.grill[0]', 'storage': 'S.storage[0]', 'trash': 'null'}
-STATION_NAME = {'plate': 'plate', 'bowl': 'bowl', 'grill': 'grill', 'storage': 'storage1', 'trash': 'trash'}
+SLOT = {'plate': 'S.plates[0]', 'bowl': 'S.bowl', 'grill': 'S.grill[0]', 'storage': 'S.storage[0]'}
+STATION_NAME = {'plate': 'plate', 'bowl': 'bowl', 'grill': 'grill', 'storage': 'storage1'}
 COMBO = {('flatbread:baked', 'pepper'): 'dish:pepper', ('flatbread:baked', 'mushroom'): 'dish:mushroom', ('sorbet', 'drizzle'): 'dish:sorbet'}
 
 check, errors = Checks(), []
@@ -40,9 +39,9 @@ results, refusals = [], 0
 with server() as port, sync_playwright() as p:
     b, ctx = new_context(p, port=port)
     g = Game(ctx, port, errors, speed=0.05)   # almost frozen time: nothing bakes or leaves during the test
-    g.start('1-3', 'placement-test')
+    g.start('1-6', 'placement-test')
     K = g.ev('window.__pf.centers()')
-    target = {'plate': K['plate'], 'bowl': K['bowl'], 'grill': K['grill'], 'storage': K['storage'][0], 'trash': K['trash']}
+    target = {'plate': K['plate'], 'bowl': K['bowl'], 'grill': K['grill'], 'storage': K['storage'][0]}
     src = {'x': 200, 'y': 330}   # empty sky: the item hovers here and is dragged from here
     key_js = "(it => it ? (it.t === 'flatbread' ? 'flatbread:' + it.st : it.t === 'dish' ? 'dish:' + it.dish : it.t) : null)"
     for station, start, accepted in CASES:
@@ -61,12 +60,10 @@ with server() as port, sync_playwright() as p:
             want_ok = item in accepted
             ev_names = [e['e'] for e in st['ev']]
             if want_ok:
-                expect_slot = None if station == 'trash' else item
+                expect_slot = item
                 if station in ('plate', 'bowl'):
                     expect_slot = COMBO.get((start, item), COMBO.get((item, start), item))
                 ok = st['held'] is None and st['hover'] == [] and 'wrong_placement' not in ev_names and st['slot'] == expect_slot
-                if station == 'trash':
-                    ok = ok and 'item_thrown_away' in ev_names
                 if start and station in ('grill', 'storage'):
                     ok = ok and st['falling'] == [start]       # the replaced item pops off
             else:
@@ -74,7 +71,7 @@ with server() as port, sync_playwright() as p:
                 wp = [e for e in st['ev'] if e['e'] == 'wrong_placement']
                 logged_item = item.replace(':', '(') + ')' if item.startswith('flatbread') else item  # describe() format
                 ok = st['held'] is None and st['hover'] == [item] and not st['falling'] and st['slot'] == start and len(wp) == 1 and wp[0]['item'] == logged_item \
-                    and wp[0]['station'] == STATION_NAME[station] and wp[0]['level'] == '1-3' and 't' in wp[0] \
+                    and wp[0]['station'] == STATION_NAME[station] and wp[0]['level'] == '1-6' and 't' in wp[0] \
                     and 'sfx_wrong_place' in st['snd'] and st['shake'] == STATION_NAME[station]
             results.append((station, start or 'empty', item, 'accept' if want_ok else 'refuse', ok))
             check(f'{station} [{start or "empty"}] + {item} -> {"placed" if want_ok else "refused"}', ok, st if not ok else '')

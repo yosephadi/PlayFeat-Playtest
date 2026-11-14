@@ -9,12 +9,12 @@ check, errors = Checks(), []
 with server() as port, sync_playwright() as p:
     b, ctx = new_context(p, port=port)
 
-    g = Game(ctx, port, errors, speed=12); g.start('1-4')
+    g = Game(ctx, port, errors, speed=12); g.start('1-6')
     g.page.wait_for_selector('#summary:not(.hidden)', timeout=60000)
     rec = g.ev('window.__pf.S.record'); ev = rec['events']
     ups = [e for e in ev if e['e'] == 'customer_stepped_up']
-    check('idle 1-4 (refill): everyone who stepped up is lost, score 0, overtime', ups and rec['customersLost'] == len(ups) and rec['score'] == 0 and rec['runTimeSec'] > 90, (len(ups), rec['customersLost'], rec['runTimeSec']))
-    check('idle 1-4: orders = pepper first, angry sorbet at #4 and #7', rec['orderSequence'][0] == 'pepper' and [i + 1 for i, o in enumerate(rec['orderSequence']) if o.startswith('ANGRY')] == [4, 7], rec['orderSequence'])
+    check('idle 1-6 (refill): everyone who stepped up is lost, score 0, overtime', ups and rec['customersLost'] == len(ups) and rec['score'] == 0 and rec['runTimeSec'] > 90, (len(ups), rec['customersLost'], rec['runTimeSec']))
+    check('idle 1-6: orders = pepper first, angry sorbet at #4 and #7', rec['orderSequence'][0] == 'pepper' and [i + 1 for i, o in enumerate(rec['orderSequence']) if o.startswith('ANGRY')] == [4, 7], rec['orderSequence'])
     useful = [e['t'] for e in ev if e['e'] == 'bubble_spawned' and e['useful']]
     check('useful bubble at least every 6 s (within one 1/60 s frame)', max(b2 - a for a, b2 in zip(useful, useful[1:])) <= 6.0 + 1 / 60 + 0.005)
     g.page.close()
@@ -22,13 +22,13 @@ with server() as port, sync_playwright() as p:
     # refill orders are random after the first: they differ between runs
     seqs = set()
     for i in range(4):
-        g = Game(ctx, port, errors, speed=8); g.start('1-2')
+        g = Game(ctx, port, errors, speed=8); g.start('1-3')
         g.page.wait_for_function('window.__pf.S.orderSequence.length >= 5', timeout=30000)
         seqs.add(tuple(g.ev('window.__pf.S.orderSequence.slice(0, 5)')))
         g.page.close()
-    check('1-2 orders vary between starts (after the fixed first order)', len(seqs) > 1 and all(sq[0] == 'pepper' for sq in seqs), seqs)
+    check('1-3 orders vary between starts (after the fixed first order)', len(seqs) > 1 and all(sq[0] == 'pepper' for sq in seqs), seqs)
 
-    g = Game(ctx, port, errors, speed=4); g.start('1-1')
+    g = Game(ctx, port, errors, speed=4); g.start('1-2')  # 1-2: normal burn time (1-1 burns at x2)
     K = g.ev('window.__pf.centers()')
     for _ in range(300):
         bub = g.ev("(() => { const b = window.__pf.S.bubbles.find(b => b.ing==='flatbread' && b.y > 70); return b ? {x:b.x,y:b.y} : null })()")
@@ -57,7 +57,7 @@ with server() as port, sync_playwright() as p:
     check('wrong dish refused, no penalty', any(e['e'] == 'wrong_dish_refused' for e in g.ev('window.__pf.S.events')) and g.ev('[window.__pf.S.seated.length, window.__pf.S.lost]') == before and g.ev('window.__pf.S.storage[0]') is None)
     g.page.close()
 
-    g = Game(ctx, port, errors); g.start('1-3')
+    g = Game(ctx, port, errors); g.start('1-4')
     K = g.ev('window.__pf.centers()')
     g.ev("(() => { const S = window.__pf.S; S.storage[0] = {id: 2, t: 'flatbread', st: 'baked', bake: 6, over: 0}; return 1 })()")
     g.drag(K['storage'][0], K['plate'])

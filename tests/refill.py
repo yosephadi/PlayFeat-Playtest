@@ -33,10 +33,11 @@ with server() as port, sync_playwright() as p:
           and [b for b in g.page.locator('#levelBtns button').all_inner_texts() if 'Marathon' in b] == ['Marathon Rounds'])
     g.page.close()
 
-    # --- first order is pepper on every day; Days 3 and 4 have angry aliens by count
-    for lv in ('1-1', '1-2', '1-3', '1-4'):
+    # --- fixed first order on every level (1-5: sorbet, the rest: pepper)
+    for lv in ('1-1', '1-2', '1-3', '1-4', '1-5', '1-6'):
         g = Game(ctx, port, errors, speed=1); g.start(lv)
-        check(f'{lv}: refill flow, first order pepper', g.ev('window.__pf.S.customerFlow') == 'refill' and g.ev('window.__pf.S.orderSequence[0]') == 'pepper')
+        first = 'sorbet' if lv == '1-5' else 'pepper'
+        check(f'{lv}: refill flow, first order {first}', g.ev('window.__pf.S.customerFlow') == 'refill' and g.ev('window.__pf.S.orderSequence[0]') == first)
         g.page.close()
 
     # --- Day 1 idle: 1 spot, patience only at the counter, 2 s after each loss, nobody new after 90 s, overtime serve
@@ -81,8 +82,8 @@ with server() as port, sync_playwright() as p:
     check('after a serve the spot stays empty, then the next customer steps up 2 s later', mid == 0 and abs(t_up - t_srv - 2) <= DT, (t_srv, t_up))
     g.page.close()
 
-    # --- Day 3 and Day 4: angry by count, max 3 at the counter, start staggered 0/2/4 s
-    for lv, angry in (('1-3', [4]), ('1-4', [4, 7])):
+    # --- 1-6: angry by count, max 3 at the counter, start staggered 0/2/4 s
+    for lv, angry in (('1-6', [4, 7]),):
         g = Game(ctx, port, errors, speed=4); g.start(lv, f'bot-{lv}')
         g.bot_play(timeout=200)
         g.page.wait_for_selector('#summary:not(.hidden)', timeout=15000)
@@ -97,10 +98,10 @@ with server() as port, sync_playwright() as p:
         print(lv, 'bot result', {k: rec[k] for k in ('dishesServed', 'customersLost', 'score', 'tips', 'total', 'stars', 'runTimeSec', 'counterIdleSec', 'avgSecBetweenServes')})
         g.page.close()
 
-    # --- Day 2 at most 2 at the counter (idle day)
-    g = Game(ctx, port, errors, speed=12); g.start('1-2')
+    # --- 1-3 at most 2 at the counter (idle day)
+    g = Game(ctx, port, errors, speed=12); g.start('1-3')
     g.page.wait_for_selector('#summary:not(.hidden)', timeout=60000)
     ev = g.ev('window.__pf.S.record.events')
-    check('Day 2 idle: never more than 2 at the counter, everyone lost at the counter', counter_max(ev) == 2 and g.ev('window.__pf.S.record.customersLost') == len([e for e in ev if e['e'] == 'customer_stepped_up']))
+    check('1-3 idle: never more than 2 at the counter, everyone lost at the counter', counter_max(ev) == 2 and g.ev('window.__pf.S.record.customersLost') == len([e for e in ev if e['e'] == 'customer_stepped_up']))
     g.page.close()
     finish(check, b, errors)

@@ -12,6 +12,8 @@
     frees, the next customer steps up after refillDelaySec; customer 1 orders firstOrder, customer N in angryAt
     (counted from 1) is angry and orders sorbet; everyone else draws from refill.orderPool WEIGHTS.
     No new customers after durationSec; those at the counter can still be served (overtime).
+  Per level: storageSlots (0 = no storage table, hidden), burnTimeMultiplier (x the common glow/burn times; 1 = normal).
+  Star targets of the story days are placeholders.
 ====================================================================== -->
 <script id="pf-config" type="application/json">
 {
@@ -65,6 +67,7 @@
       "refill": { "counterSpots": 1, "refillDelaySec": 2, "firstOrder": "pepper", "orderPool": { "pepper": 1 },
                   "angryAt": [], "patienceSec": 45, "angryPatienceSec": 25 },
       "gravity": 0.4, "bubbleLifeSec": 6, "bubbleEverySec": 3, "usefulBubbleShare": 0.8,
+      "storageSlots": 0, "burnTimeMultiplier": 2,
       "stars": [20, 40, 60],
       "pool": ["flatbread", "pepper", "mushroom"],
       "starterBubbles": [
@@ -78,10 +81,29 @@
       ]
     },
     "1-2": {
+      "name": "Hot Grill",
+      "refill": { "counterSpots": 1, "refillDelaySec": 2, "firstOrder": "pepper", "orderPool": { "pepper": 1 },
+                  "angryAt": [], "patienceSec": 45, "angryPatienceSec": 25 },
+      "gravity": 0.4, "bubbleLifeSec": 6, "bubbleEverySec": 3, "usefulBubbleShare": 0.8,
+      "storageSlots": 0, "burnTimeMultiplier": 1,
+      "stars": [20, 40, 60],
+      "pool": ["flatbread", "pepper", "mushroom"],
+      "starterBubbles": [
+        { "t": 0,  "ing": "flatbread", "lane": 2 },
+        { "t": 3,  "ing": "pepper",    "lane": 3 },
+        { "t": 6,  "ing": "flatbread", "lane": 1 },
+        { "t": 9,  "ing": "pepper",    "lane": 2 },
+        { "t": 12, "ing": "mushroom",  "lane": 4 },
+        { "t": 15, "ing": "flatbread", "lane": 2 },
+        { "t": 18, "ing": "pepper",    "lane": 3 }
+      ]
+    },
+    "1-3": {
       "name": "Two Toppings",
       "refill": { "counterSpots": 2, "refillDelaySec": 2, "firstOrder": "pepper", "orderPool": { "pepper": 1, "mushroom": 1 },
                   "angryAt": [], "patienceSec": 40, "angryPatienceSec": 25 },
       "gravity": 0.5, "bubbleLifeSec": 5, "bubbleEverySec": 2.5, "usefulBubbleShare": 0.65,
+      "storageSlots": 0, "burnTimeMultiplier": 1,
       "stars": [20, 45, 65],
       "pool": ["flatbread", "pepper", "mushroom"],
       "starterBubbles": [
@@ -89,23 +111,38 @@
         { "t": 2, "ing": "pepper",    "lane": 3 }
       ]
     },
-    "1-3": {
-      "name": "The Angry Alien",
-      "refill": { "counterSpots": 3, "refillDelaySec": 2, "firstOrder": "pepper", "orderPool": { "pepper": 1, "mushroom": 1, "sorbet": 1 },
-                  "angryAt": [4], "patienceSec": 35, "angryPatienceSec": 25 },
-      "gravity": 0.6, "bubbleLifeSec": 4, "bubbleEverySec": 2, "usefulBubbleShare": 0.6,
-      "stars": [35, 60, 75],
-      "pool": ["flatbread", "pepper", "mushroom", "sorbet", "drizzle"],
+    "1-4": {
+      "name": "Prep Ahead",
+      "refill": { "counterSpots": 2, "refillDelaySec": 2, "firstOrder": "pepper", "orderPool": { "pepper": 1, "mushroom": 1 },
+                  "angryAt": [], "patienceSec": 40, "angryPatienceSec": 25 },
+      "gravity": 0.5, "bubbleLifeSec": 5, "bubbleEverySec": 2.5, "usefulBubbleShare": 0.65,
+      "storageSlots": 2, "burnTimeMultiplier": 1,
+      "stars": [20, 45, 65],
+      "pool": ["flatbread", "pepper", "mushroom"],
       "starterBubbles": [
         { "t": 0, "ing": "flatbread", "lane": 2 },
         { "t": 2, "ing": "pepper",    "lane": 3 }
       ]
     },
-    "1-4": {
-      "name": "Double Trouble",
+    "1-5": {
+      "name": "Something Sweet",
+      "refill": { "counterSpots": 2, "refillDelaySec": 2, "firstOrder": "sorbet", "orderPool": { "pepper": 1, "mushroom": 1, "sorbet": 1 },
+                  "angryAt": [], "patienceSec": 40, "angryPatienceSec": 25 },
+      "gravity": 0.6, "bubbleLifeSec": 4, "bubbleEverySec": 2, "usefulBubbleShare": 0.6,
+      "storageSlots": 2, "burnTimeMultiplier": 1,
+      "stars": [35, 60, 75],
+      "pool": ["flatbread", "pepper", "mushroom", "sorbet", "drizzle"],
+      "starterBubbles": [
+        { "t": 0, "ing": "sorbet",  "lane": 2 },
+        { "t": 2, "ing": "drizzle", "lane": 3 }
+      ]
+    },
+    "1-6": {
+      "name": "The Angry Alien",
       "refill": { "counterSpots": 3, "refillDelaySec": 2, "firstOrder": "pepper", "orderPool": { "pepper": 1, "mushroom": 1, "sorbet": 1 },
                   "angryAt": [4, 7], "patienceSec": 35, "angryPatienceSec": 25 },
       "gravity": 0.6, "bubbleLifeSec": 4, "bubbleEverySec": 2, "usefulBubbleShare": 0.6,
+      "storageSlots": 2, "burnTimeMultiplier": 1,
       "stars": [50, 85, 105],
       "pool": ["flatbread", "pepper", "mushroom", "sorbet", "drizzle"],
       "starterBubbles": [
@@ -113,6 +150,10 @@
         { "t": 2, "ing": "pepper",    "lane": 3 }
       ]
     }
+  },
+  "planet1": {
+    "_help": "Not used yet: the game has no gas or jump. Recorded here for later: 1 gas per star, the jump needs jumpNeedsGas of the 18 possible (6 levels x 3 stars).",
+    "gasPerStar": 1, "jumpNeedsGas": 8
   },
   "marathon": {
     "name": "Marathon",
@@ -683,6 +724,10 @@ resize();
 let S = null; // current run
 
 // Marathon Rounds is built on the shared "marathon" config block (ramp, stages, tips, 3-lost end); the plain Marathon mode was removed.
+// glow / burn times after a flatbread is done, scaled by the level's burnTimeMultiplier (story days; Rounds has none = x1)
+const burnMult = () => (S && S.lv && S.lv.burnTimeMultiplier) || 1;
+const glowAfter = () => C.glowAfterDoneSec * burnMult();
+const burnAfter = () => C.burnAfterDoneSec * burnMult();
 function levelCfg(id) { return id === 'rounds' ? Object.assign({}, CFG.marathon, CFG.marathonRounds) : CFG.levels[id]; }
 function levelName(id) { return id === 'rounds' ? CFG.marathonRounds.name : `${id} ${CFG.levels[id].name}`; }
 
@@ -705,6 +750,7 @@ function startRun(levelId, tester) {
     nextSpawnT: 0, lastUsefulT: 0, lastLane: -1,
     serveTimes: [], waits: [], stage: 1,
     customerFlow, idleSec: 0,
+    stored: 0, servedFromStorage: 0,  // storage use (1-4 Prep Ahead)
     lastSeen: {}, needSince: {}, bubblesSpawned: 0, usefulSpawned: 0, bubbleInterval: lv.bubbleEverySec, ingWaits: [], lostWaitingIng: 0,
   };
   S.nextSpawnT = (S.starters.length ? S.starters[S.starters.length - 1].t : 0) + lv.bubbleEverySec;
@@ -830,6 +876,7 @@ function serve(c, it) {
   S.score += pts; S.tips += tip; S.served++;
   if (S.rounds) { S.rounds.coins += tip; checkStorageUnlock(); }  // 1 marathon coin per tip
   S.waits.push(wait); S.serveTimes.push(S.t);
+  if (it.stored) S.servedFromStorage++;
   SND.play('sfx_serve_ok');
   let ingWait;
   if (S.rounds) { ingWait = r2(Math.max(0, (c.availAt ?? S.t) - c.seatedT)); S.ingWaits.push(ingWait); }
@@ -1154,13 +1201,13 @@ function step(dt) {
     if (it.st === 'raw') { it.bake += dt; if (it.bake >= bakeSecNow()) { it.st = 'baked'; it.over = it.bake - bakeSecNow(); SND.play('sfx_bake_ready'); } }
     else if (it.st === 'baked') {
       const before = it.over; it.over += dt;
-      if (before < C.glowAfterDoneSec && it.over >= C.glowAfterDoneSec) log('flatbread_glowing', { slot: i + 1 });
-      if (it.over >= C.glowAfterDoneSec && it.over < C.burnAfterDoneSec && it.over >= (it.nextTick || 0)) {
+      if (before < glowAfter() && it.over >= glowAfter()) log('flatbread_glowing', { slot: i + 1 });
+      if (it.over >= glowAfter() && it.over < burnAfter() && it.over >= (it.nextTick || 0)) {
         // warning tick, faster as the burn gets closer (0.5 s -> 0.12 s apart)
-        const f = (it.over - C.glowAfterDoneSec) / (C.burnAfterDoneSec - C.glowAfterDoneSec);
+        const f = (it.over - glowAfter()) / (burnAfter() - glowAfter());
         SND.play('sfx_bake_warning'); it.nextTick = it.over + 0.5 - 0.38 * f;
       }
-      if (it.over >= C.burnAfterDoneSec) { it.st = 'burnt'; S.burnt++; log('flatbread_burnt', { slot: i + 1 }); SND.play('sfx_bake_burnt'); }
+      if (it.over >= burnAfter()) { it.st = 'burnt'; S.burnt++; log('flatbread_burnt', { slot: i + 1 }); SND.play('sfx_bake_burnt'); }
     }
   }
   // bubble spawns
@@ -1229,7 +1276,7 @@ function combine(kind, cur, it) {
   if (!cur) return it;
   for (const [k, d] of Object.entries(DISH)) {
     const pair = [cur, it];
-    if (pair.some(x => x.t === d.base) && pair.some(x => x.t === d.topping)) return { id: uid++, t: 'dish', dish: k };
+    if (pair.some(x => x.t === d.base) && pair.some(x => x.t === d.topping)) return { id: uid++, t: 'dish', dish: k, stored: !!(cur.stored || it.stored) };
   }
   return null;
 }
@@ -1329,7 +1376,7 @@ function drop(p) {
     if (!inPoly(p, L.storage[i], 14)) continue;
     const old = S.storage[i];
     if (stationBusy('storage' + (i + 1)) || !canPlace('storage', old, it)) return refuse(it, p, 'storage' + (i + 1));
-    S.storage[i] = it; log('item_stored', { item: describe(it), slot: i + 1 }); SND.play('sfx_place');
+    S.storage[i] = it; it.stored = true; S.stored++; log('item_stored', { item: describe(it), slot: i + 1 }); SND.play('sfx_place');
     if (old) popOff(old, it, boxCenter(i), 'storage' + (i + 1));
     return;
   }
@@ -1506,18 +1553,18 @@ function drawGrill(st) {
   st.grill.forEach((it, i) => {
     if (!it) return;
     const p = grillSlotPos(i);
-    if (it.st === 'baked' && it.over >= C.glowAfterDoneSec) {
+    if (it.st === 'baked' && it.over >= glowAfter()) {
       const pulse = 0.5 + 0.5 * Math.sin(S.t * 10);
       ctx.fillStyle = `rgba(255,${Math.round(80 + 60 * pulse)},0,${0.35 + 0.35 * pulse})`; ell(p.x, p.y, 70, 50); ctx.fill();
     }
     drawItem(it, p.x, p.y, 1);
     let frac, col;
     if (it.st === 'raw') { frac = it.bake / bakeSecNow(); col = '#fff36b'; }
-    else if (it.st === 'baked') { frac = it.over / C.burnAfterDoneSec; col = '#ff2a00'; }
+    else if (it.st === 'baked') { frac = it.over / burnAfter(); col = '#ff2a00'; }
     else { frac = 1; col = '#000'; }
     ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, 54, 40, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = col; ctx.beginPath(); ctx.ellipse(p.x, p.y, 54, 40, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, frac)); ctx.stroke();
-    if (it.st === 'baked' && it.over >= C.burnAfterDoneSec - (C.burnWarningSec ?? 3)) drawWarnSign(p.x + 54, p.y - 52);
+    if (it.st === 'baked' && it.over >= burnAfter() - (C.burnWarningSec ?? 3)) drawWarnSign(p.x + 54, p.y - 52);
   });
   if (shk) { ctx.fillStyle = `rgba(255,40,40,${shk.a})`; poly(L.grillPoly); ctx.fill(); }
   ctx.restore();
@@ -1775,7 +1822,7 @@ function saveRuns() {
 }
 loadRuns();
 
-const LEVELS = ['1-1', '1-2', '1-3', '1-4', 'rounds'];
+const LEVELS = ['1-1', '1-2', '1-3', '1-4', '1-5', '1-6', 'rounds'];
 let selLevel = '1-1';
 function renderLevelBtns() {
   $('levelBtns').innerHTML = '';
@@ -1861,6 +1908,8 @@ function summarize() {
       bubblesSpawned: S.bubblesSpawned,
       usefulBubbleShare: S.bubblesSpawned ? r2(S.usefulSpawned / S.bubblesSpawned) : null,
     }))(S.rounds) : {}),
+    levelId: S.levelId, itemsStored: S.stored, dishesFromStorage: S.servedFromStorage,
+    firstServeSec: S.serveTimes.length ? r1(S.serveTimes[0]) : null,
     levelConfig: JSON.parse(JSON.stringify(S.lv)),
     events: S.events,
   };
@@ -1884,6 +1933,8 @@ const COLS = [
   // added for the Marathon Rounds bubble supply
   ['ingredient_wait_per_dish', 'ingredientWaitPerDish'], ['ingredient_wait_avg_s', 'ingredientWaitAvgSec'], ['ingredient_wait_max_s', 'ingredientWaitMaxSec'],
   ['lost_waiting_ingredient', 'lostWaitingIngredient'], ['bubbles_spawned', 'bubblesSpawned'], ['useful_bubble_share', 'usefulBubbleShare'],
+  // added for the 6 Planet 1 levels (dishes_from_storage = served dishes that were, or contain a part that was, in storage)
+  ['level_id', 'levelId'], ['items_stored', 'itemsStored'], ['dishes_from_storage', 'dishesFromStorage'], ['first_serve_s', 'firstServeSec'],
 ];
 const cell = v => v == null ? '' : String(v);
 function tsvRow(rec) { return COLS.map(([, k]) => cell(rec[k]).replace(/[\t\r\n]+/g, ' ')).join('\t'); }

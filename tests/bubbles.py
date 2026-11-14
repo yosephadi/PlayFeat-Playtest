@@ -117,13 +117,13 @@ with server() as port, sync_playwright() as p:
           and abs(rec['usefulBubbleShare'] - sum(e['useful'] for e in ev if e['e'] == 'bubble_spawned') / rec['bubblesSpawned']) < 0.01
           and rec['bubblesMissed'] == sum(1 for e in ev if e['e'] == 'bubble_missed'))
     names = [c[0] for c in g.ev(f'{P}.COLS')]
-    check('export columns added at the end', names[-6:] == ['ingredient_wait_per_dish', 'ingredient_wait_avg_s', 'ingredient_wait_max_s', 'lost_waiting_ingredient', 'bubbles_spawned', 'useful_bubble_share'])
+    check('export columns in place (followed only by the Planet 1 columns)', names[-4:] == ['level_id', 'items_stored', 'dishes_from_storage', 'first_serve_s'] and names[-10:-4] == ['ingredient_wait_per_dish', 'ingredient_wait_avg_s', 'ingredient_wait_max_s', 'lost_waiting_ingredient', 'bubbles_spawned', 'useful_bubble_share'])
     print('bot run', {k: rec[k] for k in ('dishesServed', 'runTimeSec', 'ingredientWaitAvgSec', 'ingredientWaitMaxSec', 'lostWaitingIngredient', 'bubblesSpawned', 'usefulBubbleShare', 'bubblesMissed')},
           'from list', round(from_list, 2), 'min interval', min(e['interval'] for e in bub))
     g.page.close()
 
     # story days keep the old bubble rule (fixed interval, no demand fields)
-    g = Game(ctx, port, errors, speed=8); g.start('1-3')
+    g = Game(ctx, port, errors, speed=8); g.start('1-6')
     g.page.wait_for_function(f'{P}.S.t > 30', timeout=20000)
     ev = g.ev(f'{P}.S.events')
     sb = [e for e in ev if e['e'] == 'bubble_spawned']

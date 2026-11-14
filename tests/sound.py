@@ -40,7 +40,7 @@ with server() as port, sync_playwright() as p:
     check('A sfx_grab on station / mid-air pickups', ids['sfx_grab'] >= 4, ids['sfx_grab'])
     places = sum(1 for e in ev if e['e'] in ('item_placed', 'dish_assembled', 'item_stored')) + sum(1 for e in ev if e['e'] == 'item_replaced' and not e['on'].startswith('storage'))
     check('A sfx_place once per placement', ids['sfx_place'] == places, (ids['sfx_place'], places))
-    check('A sfx_trash once per item thrown away', ids['sfx_trash'] == sum(1 for e in ev if e['e'] == 'item_thrown_away'), ids['sfx_trash'])
+    check('A no trash sound any more (trash bin removed)', 'sfx_trash' not in g.ev('Object.keys(window.__pf.SOUND_CONFIG)') and ids['sfx_trash'] == 0)
     grill_t = [e['t'] for e in ev if e['e'] == 'item_placed' and e['on'] == 'grill']
     loops = [s for s in snd if s['id'] == 'sfx_bake_loop']
     starts = [s['t'] for s in loops if s['note'] == 'loop start']
@@ -58,9 +58,9 @@ with server() as port, sync_playwright() as p:
     json.dump({'actions': actions, 'sounds': dict(ids)}, open(f'{OUT}/sound-day1.json', 'w'), indent=1)
     g.page.close()
 
-    # B) burn warning ticks speed up, burnt fzzt, wrong dish bonk
+    # B) burn warning ticks speed up, burnt fzzt, wrong dish bonk (1-2: normal burn time; 1-1 burns at x2)
     g = Game(ctx, port, errors, speed=4)
-    g.start('1-1')
+    g.start('1-2')
     for _ in range(300):
         bub = g.ev("(() => { const b = window.__pf.S.bubbles.find(b => b.ing === 'flatbread' && b.y > 70); return b ? {x:b.x,y:b.y} : null })()")
         if bub: break
@@ -88,9 +88,9 @@ with server() as port, sync_playwright() as p:
     check('B pause tap plays sfx_button', g.ev(LOG)[-1]['id'] == 'sfx_button')
     g.page.close()
 
-    # C) idle Day 4: angry arrivals, customers leaving (-10), last-10-seconds ticks, day end, no stars
+    # C) idle 1-6: angry arrivals, customers leaving (-10), last-10-seconds ticks, day end, no stars
     g = Game(ctx, port, errors, speed=12)
-    g.start('1-4')
+    g.start('1-6')
     g.page.wait_for_selector('#summary:not(.hidden)', timeout=60000)
     g.page.wait_for_timeout(2600)
     snd, ev = g.ev(LOG), g.ev(EV)
